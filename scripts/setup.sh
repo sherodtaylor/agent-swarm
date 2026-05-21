@@ -31,6 +31,12 @@ if [ -d "${AGENT_DIR}/subagents" ]; then
 fi
 echo "[setup] assembled ~/.claude for ${AGENT_NAME}"
 
+# Install the Matrix channel plugin from its marketplace. settings.json registers
+# the marketplace, but the plugin must be explicitly installed to materialize it.
+claude plugin marketplace add zekker6/claude-code-channel-matrix 2>&1 || true
+claude plugin install matrix@claude-code-channel-matrix 2>&1 || true
+echo "[setup] matrix channel plugin installed"
+
 # Matrix channel config from env
 cat > "${CLAUDE_DIR}/channels/matrix/.env" <<EOF
 MATRIX_HOMESERVER_URL=${MATRIX_HOMESERVER_URL}
