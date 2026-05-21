@@ -1,0 +1,30 @@
+{
+  "channelsEnabled": true,
+  "extraKnownMarketplaces": {
+    "claude-code-channel-matrix": {
+      "source": { "source": "github", "repo": "zekker6/claude-code-channel-matrix" }
+    }
+  },
+  "enabledPlugins": {
+    "matrix@claude-code-channel-matrix": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git*)",
+      "Bash(gh*)",
+      "Bash(kubectl get*)",
+      "Bash(kubectl describe*)",
+      "Bash(kubectl kustomize*)",
+      "Bash(flux*)",
+      "Read",
+      "Edit",
+      "Write",
+      "Grep",
+      "Glob"
+    ],
+    "deny": [
+      "Bash(kubectl delete*)",
+      "Bash(git push origin main*)"
+    ]
+  }
+}
