@@ -16,7 +16,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV BUN_INSTALL=/usr/local
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      git curl wget ca-certificates gnupg \
+      git curl wget ca-certificates gnupg unzip \
       zsh vim tmux python3 \
     && rm -rf /var/lib/apt/lists/*
 
