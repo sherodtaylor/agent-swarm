@@ -24,6 +24,7 @@ dispatch() {
   local target="$1"
   local quiet=0
   local pane
+  local theme_done=0
   local bypass_done=0
   local devch_done=0
   # Each prompt is accepted at most once — claude's rendered prompt text stays
@@ -31,7 +32,13 @@ dispatch() {
   # send Down+Enter into the next state (which can pick the wrong option).
   for _ in $(seq 1 30); do
     pane="$(tmux capture-pane -p -t "$target" 2>/dev/null || true)"
-    if [ "$bypass_done" = 0 ] && printf '%s' "$pane" | grep -qE "Bypass.*Permissions"; then
+    if [ "$theme_done" = 0 ] && printf '%s' "$pane" | grep -q "Choose the text style"; then
+      sleep 2
+      tmux send-keys -t "$target" Enter
+      echo "[entrypoint] $target: auto-accepted theme picker (default)"
+      theme_done=1
+      quiet=0; sleep 4
+    elif [ "$bypass_done" = 0 ] && printf '%s' "$pane" | grep -qE "Bypass.*Permissions"; then
       sleep 2
       tmux send-keys -t "$target" Down
       sleep 0.5
@@ -64,7 +71,7 @@ if ! tmux has-session -t main 2>/dev/null; then
   # so it doesn't fight pane 0 over ~/.claude.json.
   tmux split-window -v -t main:0 -c "${WORKDIR}"
   tmux pipe-pane -t main:0.1 -o 'cat >> /proc/1/fd/1'
-  tmux send-keys -t main:0.1 "HOME=/root-rc claude --remote-control \"${AGENT_NAME}\" --permission-mode bypassPermissions" Enter
+  tmux send-keys -t main:0.1 "HOME=/root/rc-home claude --remote-control \"${AGENT_NAME}\" --permission-mode bypassPermissions" Enter
   dispatch main:0.1
 fi
 

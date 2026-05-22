@@ -102,7 +102,7 @@ done
 echo "[setup] complete"
 
 # Mirror the assembled HOME to /root-rc for the dedicated remote-control claude.
-RC_HOME="/root-rc"
+RC_HOME="/root/rc-home"
 mkdir -p "${RC_HOME}/.claude/agents"
 cp -a "${HOME}/.claude/CLAUDE.md"  "${RC_HOME}/.claude/" 2>/dev/null || true
 cp -a "${HOME}/.claude/.mcp.json"  "${RC_HOME}/.claude/" 2>/dev/null || true
@@ -119,7 +119,26 @@ strip = {"channelsEnabled", "extraKnownMarketplaces", "enabledPlugins"}
 dst = {k: v for k, v in src.items() if k not in strip}
 json.dump(dst, open("${RC_HOME}/.claude/settings.json", "w"), indent=2)
 PY
-cp "${HOME}/.claude.json" "${RC_HOME}/.claude.json" 2>/dev/null || true
+# Pre-seed RC's .claude.json with the onboarding + per-repo trust flags
+# directly (don't rely on cp — claude may rewrite the file on first run with
+# default content, dropping our flags).
+python3 - <<PY
+import json, os
+p = "${RC_HOME}/.claude.json"
+try:
+    d = json.load(open(p))
+except Exception:
+    d = {}
+d["hasCompletedOnboarding"] = True
+projects = d.setdefault("projects", {})
+for repo in os.environ.get("AGENT_REPOS", "sherodtaylor/homelab").split():
+    path = "/workspace/" + repo.split("/")[-1]
+    proj = projects.setdefault(path, {})
+    proj["hasTrustDialogAccepted"] = True
+    proj["hasTrustDialogBashAccepted"] = True
+    proj["hasCompletedProjectOnboarding"] = True
+json.dump(d, open(p, "w"))
+PY
 [ -f "${HOME}/.gitconfig" ]       && cp "${HOME}/.gitconfig"       "${RC_HOME}/.gitconfig"
 [ -f "${HOME}/.git-credentials" ] && cp "${HOME}/.git-credentials" "${RC_HOME}/.git-credentials" && chmod 600 "${RC_HOME}/.git-credentials"
 echo "[setup] mirrored config to ${RC_HOME} for remote-control claude"
