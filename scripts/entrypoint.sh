@@ -12,6 +12,7 @@ echo "[entrypoint] agent=${AGENT_NAME} workdir=${WORKDIR}"
 # is required because the plugin is not on the official channel allowlist.
 CLAUDE_CMD=(
   claude
+  --remote-control "${AGENT_NAME}"
   --dangerously-load-development-channels plugin:matrix@claude-code-channel-matrix
   --permission-mode bypassPermissions
 )
@@ -21,6 +22,15 @@ if ! tmux has-session -t main 2>/dev/null; then
   # Mirror the pane to pod stdout so VictoriaLogs captures the Claude session.
   tmux pipe-pane -t main -o 'cat >> /proc/1/fd/1'
   tmux send-keys -t main "${CLAUDE_CMD[*]}" Enter
+  # claude shows a one-time "Bypass Permissions mode" warning with no headless
+  # config bypass — accept it by driving the tmux pane once the prompt appears.
+  for _ in $(seq 1 20); do
+    if tmux capture-pane -p -t main 2>/dev/null | grep -q "Bypass Permissions"; then
+      tmux send-keys -t main Down Enter
+      break
+    fi
+    sleep 1
+  done
 fi
 
 echo "[entrypoint] claude+matrix channel started in tmux session 'main'"
