@@ -22,27 +22,32 @@ if ! tmux has-session -t main 2>/dev/null; then
   # Mirror the pane to pod stdout so VictoriaLogs captures the Claude session.
   tmux pipe-pane -t main -o 'cat >> /proc/1/fd/1'
   tmux send-keys -t main "${CLAUDE_CMD[*]}" Enter
-  # claude shows a one-time "Bypass Permissions mode" warning with no headless
-  # config bypass — accept it by driving the tmux pane once the prompt appears.
-  # claude column-positions the words "Bypass" and "Permissions", so the
-  # rendered pane has variable spacing between them — match with a regex.
-  accepted=0
-  for _ in $(seq 1 20); do
-    if tmux capture-pane -p -t main 2>/dev/null | grep -qE "Bypass.*Permissions"; then
-      sleep 2                                   # let the prompt fully render
+  # claude shows several interactive first-run prompts that have no headless
+  # config bypass (Bypass Permissions warning; development-channels consent for
+  # --dangerously-load-development-channels). Drive past them by polling the
+  # pane and sending the appropriate keystroke. claude column-positions text,
+  # so each detector uses a regex tolerant of variable spacing.
+  quiet=0
+  for _ in $(seq 1 30); do
+    pane="$(tmux capture-pane -p -t main 2>/dev/null || true)"
+    if printf '%s' "$pane" | grep -qE "Bypass.*Permissions"; then
+      sleep 2
       tmux send-keys -t main Down
-      sleep 0.5
+      sleep 0.3
       tmux send-keys -t main Enter
-      accepted=1
-      break
+      echo "[entrypoint] auto-accepted: Bypass Permissions warning"
+      quiet=0; sleep 3
+    elif printf '%s' "$pane" | grep -q "I am using this for local development"; then
+      sleep 2
+      tmux send-keys -t main Enter
+      echo "[entrypoint] auto-accepted: development channels prompt"
+      quiet=0; sleep 3
+    else
+      quiet=$((quiet + 1))
+      [ "$quiet" -ge 5 ] && break
+      sleep 2
     fi
-    sleep 1
   done
-  if [ "$accepted" = 1 ]; then
-    echo "[entrypoint] bypass-permissions warning auto-accepted"
-  else
-    echo "[entrypoint] bypass-permissions warning not seen in 20s"
-  fi
 fi
 
 echo "[entrypoint] claude+matrix channel started in tmux session 'main'"
