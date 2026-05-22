@@ -12,8 +12,7 @@ echo "[entrypoint] agent=${AGENT_NAME} workdir=${WORKDIR}"
 # is required because the plugin is not on the official channel allowlist.
 CLAUDE_CMD=(
   claude
-  --dangerously-load-development-channels
-  --channels "plugin:matrix@claude-code-channel-matrix"
+  --dangerously-load-development-channels plugin:matrix@claude-code-channel-matrix
   --permission-mode bypassPermissions
 )
 
