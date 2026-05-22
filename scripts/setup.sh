@@ -53,13 +53,16 @@ print(json.dumps({"allowedUsers": users, "ackReaction": "👀"}, indent=2))
 PY
 echo "[setup] wrote Matrix channel config"
 
-# git / gh auth
+# git / gh auth — GITHUB_TOKEN is already in the environment, so `gh` uses it
+# automatically. `gh auth login` refuses to run while the env var is set, so we
+# only wire `git` to the token for HTTPS clone/push.
 git config --global user.name  "${AGENT_NAME}"
 git config --global user.email "${AGENT_NAME}@lab.sherodtaylor.dev"
 if [ -n "${GITHUB_TOKEN:-}" ]; then
-  echo "${GITHUB_TOKEN}" | gh auth login --with-token
-  gh auth setup-git
-  echo "[setup] gh authenticated"
+  git config --global credential.helper store
+  printf 'https://x-access-token:%s@github.com\n' "${GITHUB_TOKEN}" > "${HOME}/.git-credentials"
+  chmod 600 "${HOME}/.git-credentials"
+  echo "[setup] git credentials configured (gh uses GITHUB_TOKEN from env)"
 fi
 
 # Clone working repos
