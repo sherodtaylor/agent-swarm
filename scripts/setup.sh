@@ -100,3 +100,26 @@ for repo in ${AGENT_REPOS:-sherodtaylor/homelab}; do
 done
 
 echo "[setup] complete"
+
+# Mirror the assembled HOME to /root-rc for the dedicated remote-control claude.
+RC_HOME="/root-rc"
+mkdir -p "${RC_HOME}/.claude/agents"
+cp -a "${HOME}/.claude/CLAUDE.md"  "${RC_HOME}/.claude/" 2>/dev/null || true
+cp -a "${HOME}/.claude/.mcp.json"  "${RC_HOME}/.claude/" 2>/dev/null || true
+if [ -d "${HOME}/.claude/agents" ]; then
+  cp -a "${HOME}/.claude/agents/." "${RC_HOME}/.claude/agents/" 2>/dev/null || true
+fi
+# settings.json with channels-related keys stripped so the RC instance
+# does NOT load the matrix channel plugin (the channels pane already owns
+# the @<agent>:lab.sherodtaylor.dev Matrix identity).
+python3 - <<PY
+import json
+src = json.load(open("${HOME}/.claude/settings.json"))
+strip = {"channelsEnabled", "extraKnownMarketplaces", "enabledPlugins"}
+dst = {k: v for k, v in src.items() if k not in strip}
+json.dump(dst, open("${RC_HOME}/.claude/settings.json", "w"), indent=2)
+PY
+cp "${HOME}/.claude.json" "${RC_HOME}/.claude.json" 2>/dev/null || true
+[ -f "${HOME}/.gitconfig" ]       && cp "${HOME}/.gitconfig"       "${RC_HOME}/.gitconfig"
+[ -f "${HOME}/.git-credentials" ] && cp "${HOME}/.git-credentials" "${RC_HOME}/.git-credentials" && chmod 600 "${RC_HOME}/.git-credentials"
+echo "[setup] mirrored config to ${RC_HOME} for remote-control claude"
