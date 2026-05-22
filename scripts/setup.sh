@@ -31,6 +31,20 @@ if [ -d "${AGENT_DIR}/subagents" ]; then
 fi
 echo "[setup] assembled ~/.claude for ${AGENT_NAME}"
 
+# Mark first-run onboarding complete so `claude` doesn't block on the interactive
+# theme picker when started headless on a fresh HOME.
+python3 - <<'PY'
+import json, os
+p = os.path.expanduser("~/.claude.json")
+try:
+    d = json.load(open(p))
+except Exception:
+    d = {}
+d["hasCompletedOnboarding"] = True
+json.dump(d, open(p, "w"))
+PY
+echo "[setup] marked onboarding complete"
+
 # Install the Matrix channel plugin from its marketplace. settings.json registers
 # the marketplace, but the plugin must be explicitly installed to materialize it.
 claude plugin marketplace add zekker6/claude-code-channel-matrix 2>&1 || true
