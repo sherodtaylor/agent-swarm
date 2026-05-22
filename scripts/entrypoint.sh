@@ -24,13 +24,25 @@ if ! tmux has-session -t main 2>/dev/null; then
   tmux send-keys -t main "${CLAUDE_CMD[*]}" Enter
   # claude shows a one-time "Bypass Permissions mode" warning with no headless
   # config bypass — accept it by driving the tmux pane once the prompt appears.
+  # claude column-positions the words "Bypass" and "Permissions", so the
+  # rendered pane has variable spacing between them — match with a regex.
+  accepted=0
   for _ in $(seq 1 20); do
-    if tmux capture-pane -p -t main 2>/dev/null | grep -q "Bypass Permissions"; then
-      tmux send-keys -t main Down Enter
+    if tmux capture-pane -p -t main 2>/dev/null | grep -qE "Bypass.*Permissions"; then
+      sleep 2                                   # let the prompt fully render
+      tmux send-keys -t main Down
+      sleep 0.5
+      tmux send-keys -t main Enter
+      accepted=1
       break
     fi
     sleep 1
   done
+  if [ "$accepted" = 1 ]; then
+    echo "[entrypoint] bypass-permissions warning auto-accepted"
+  else
+    echo "[entrypoint] bypass-permissions warning not seen in 20s"
+  fi
 fi
 
 echo "[entrypoint] claude+matrix channel started in tmux session 'main'"
