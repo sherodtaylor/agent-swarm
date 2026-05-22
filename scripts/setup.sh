@@ -31,8 +31,8 @@ if [ -d "${AGENT_DIR}/subagents" ]; then
 fi
 echo "[setup] assembled ~/.claude for ${AGENT_NAME}"
 
-# Mark first-run onboarding complete so `claude` doesn't block on the interactive
-# theme picker when started headless on a fresh HOME.
+# Mark first-run onboarding complete and pre-trust the agent's workspace repos,
+# so `claude` started headless doesn't block on the theme picker or trust dialog.
 python3 - <<'PY'
 import json, os
 p = os.path.expanduser("~/.claude.json")
@@ -41,9 +41,16 @@ try:
 except Exception:
     d = {}
 d["hasCompletedOnboarding"] = True
+projects = d.setdefault("projects", {})
+for repo in os.environ.get("AGENT_REPOS", "sherodtaylor/homelab").split():
+    path = "/workspace/" + repo.split("/")[-1]
+    proj = projects.setdefault(path, {})
+    proj["hasTrustDialogAccepted"] = True
+    proj["hasTrustDialogBashAccepted"] = True
+    proj["hasCompletedProjectOnboarding"] = True
 json.dump(d, open(p, "w"))
 PY
-echo "[setup] marked onboarding complete"
+echo "[setup] marked onboarding complete + pre-trusted workspace repos"
 
 # Install the Matrix channel plugin from its marketplace. settings.json registers
 # the marketplace, but the plugin must be explicitly installed to materialize it.
