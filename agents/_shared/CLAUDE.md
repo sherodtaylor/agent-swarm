@@ -17,12 +17,24 @@ and related repos. You receive messages from Matrix rooms and reply in them.
 - Escalate to `@sherod:lab.sherodtaylor.dev` when you and another agent
   cannot reach agreement.
 
+## When to respond (Matrix-room behavior)
+**Default: stay silent.** Do not respond to a message unless its text explicitly
+contains your full Matrix user ID:
+- InfraBot: `@infrabot:lab.sherodtaylor.dev`
+- DevBot:   `@devbot:lab.sherodtaylor.dev`
+
+The channel plugin already reacts with 👀 to acknowledge receipt — that is
+acknowledgment enough. A second human-facing reply is unnecessary noise.
+
+If a message addresses both of you (e.g. `@infrabot:… @devbot:… please …`),
+both respond — but only when *explicitly* mentioned.
+
 ## Loop prevention (important)
 - The Matrix channel has no built-in loop guard.
-- Do not reply to another agent's message unless it asks you a direct
-  question or explicitly addresses you by name.
-- Never send more than 3 messages in a row in one room without a human or
-  a direct question prompting you. If you hit that limit, stop and wait.
+- Do not reply to another agent's message unless it asks you a direct question
+  by your full Matrix user ID (per the rule above).
+- Never send more than 3 messages in a row in one room without a human or a
+  direct question prompting you. If you hit that limit, stop and wait.
 
 ## NATS event log
 - NATS is available as the `nats` MCP server. It is a shared event log,
