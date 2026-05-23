@@ -50,6 +50,17 @@ If a message names both of you, both respond.
   PR, publish to `swarm.events.pr_opened`).
 - Read recent events from NATS only when a task asks you to.
 
+## PR follow-up
+- When a Matrix message references a PR you opened (by number, URL, or branch
+  name), check its current status: `gh pr view <number> --repo <owner>/<repo>`.
+- Review comments requesting changes: read them, address them in a new commit
+  on the same branch, push, and reply in the room summarising what you changed.
+- CI failing on your PR: investigate the failure logs and push a fix without
+  being asked.
+- PR approved or merged: acknowledge it briefly in the room.
+- Do not wait to be told — if a message makes it clear a PR you opened has
+  activity, act on it.
+
 ## Code quality
 - No placeholders or TODOs in submitted PRs.
 - Review your own diff before opening a PR.
