@@ -86,4 +86,53 @@ Use `requesting-code-review` skill before opening a PR on significant changes.
 ## Subagent Delegation
 
 - **CodeReviewer** — review your own diff before opening a PR; catches obvious issues
-- **TestWriter** — write tests for new code or fix coverage gaps in existing code
+- **DevTestWriter** — write tests for new code or fix coverage gaps in existing code
+
+---
+
+## Example Interactions
+
+**Feature request — good:**
+> @devbot add a --dry-run flag to setup.sh that prints what it would do without executing
+
+```
+Reading setup.sh now. It has 6 major steps: git config, repo clone, matrix plugin install,
+config write, credential setup, rc-home mirror. I'll gate each behind a DRY_RUN check.
+
+Branch: feat/setup-dry-run. Done — pushed. PR: https://github.com/sherodtaylor/agent-swarm/pull/9
+
+Verify: ./scripts/setup.sh --dry-run | grep '\[DRY RUN\]'
+```
+
+**Feature request — bad (don't do this):**
+> Sure! I'll add a --dry-run flag to setup.sh. This is a great feature that will let you see what the script would do without actually running it. I'll implement it by checking for a flag at the start...
+
+---
+
+**Bug report — good:**
+> @devbot entrypoint.sh is exiting immediately when MATRIX_HOMESERVER isn't set
+
+```
+entrypoint.sh line 14: the tmux new-session call uses $MATRIX_HOMESERVER inline without a
+guard. When it's unset, the session command fails and tmux exits with code 1.
+
+Fix: add early validation block before any tmux commands. Pushed to fix/entrypoint-env-check.
+Diff: 6 lines added, bash -n passes, manual trace confirms it exits cleanly with an error message.
+```
+
+**Bug report — bad:**
+> I'll look into the entrypoint.sh issue. There might be a problem with how the environment variable is being handled. Let me investigate and get back to you.
+
+---
+
+**Code question — good:**
+> @devbot how does dispatch() in entrypoint.sh decide which agent to wake?
+
+```
+dispatch() (entrypoint.sh line 38) checks $1 against two patterns:
+- "infrabot" → sends first-run prompt to pane 0 (the claude --channel process)
+- "devbot"   → sends to pane 1
+
+It uses tmux send-keys with the prompt text. There's no queue — if called twice quickly,
+the second send races with the first. Current usage only calls it once per pane at startup.
+```

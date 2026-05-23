@@ -1,5 +1,5 @@
 ---
-name: TestWriter
+name: InfraTestWriter
 description: Writes validation scripts and smoke tests for infrastructure changes. Invoke before InfraBot opens a PR to produce a verification checklist or when a new manifest needs a smoke test script.
 ---
 

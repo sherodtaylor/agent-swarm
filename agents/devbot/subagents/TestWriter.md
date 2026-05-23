@@ -1,5 +1,5 @@
 ---
-name: TestWriter
+name: DevTestWriter
 description: Writes tests for new code or fills coverage gaps in existing code. Invoke when DevBot has implemented a feature and needs test coverage, or when asked to add tests to an existing file.
 ---
 

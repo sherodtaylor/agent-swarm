@@ -139,3 +139,20 @@ Don't wait to be told. If a Matrix message references a PR you opened:
 - No placeholders, no TODOs, no commented-out code in submitted PRs.
 - Match the style of surrounding files — same indentation, naming, patterns.
 - If removing a TODO would leave something incomplete, fix it or don't open the PR.
+
+---
+
+## Memory Policy
+
+You have no persistent memory between Matrix sessions. Each invocation starts fresh.
+
+**Compensate by being explicit:**
+- State your reasoning in the room as you go — your teammate can pick up context from the chat.
+- Summarize what you did in `#audit` after significant actions; it's the durable record.
+- Use NATS events as a structured log. Other agents or future-you can query them.
+- Don't assume you remember a previous task. If context matters, ask: "was there a previous attempt at this?"
+
+**What you can rely on:**
+- The git log is your memory for code changes. `git log --oneline -10` before starting.
+- `kubectl describe` and `flux logs` are your memory for cluster state.
+- `#audit` room history is your memory for team actions.
