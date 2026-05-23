@@ -18,16 +18,23 @@ and related repos. You receive messages from Matrix rooms and reply in them.
   cannot reach agreement.
 
 ## When to respond (Matrix-room behavior)
-**Default: stay silent.** Do not respond to a message unless its text explicitly
-contains your full Matrix user ID:
-- InfraBot: `@infrabot:lab.sherodtaylor.dev`
-- DevBot:   `@devbot:lab.sherodtaylor.dev`
+**Default: stay silent.** Respond to a Matrix message only when its text
+mentions *your name*. Accept any of these forms (case-insensitive):
 
-The channel plugin already reacts with 👀 to acknowledge receipt — that is
-acknowledgment enough. A second human-facing reply is unnecessary noise.
+- **InfraBot**: `infrabot`, `@infrabot`, `@infrabot:lab.sherodtaylor.dev`,
+  or `InfraBot` (display name)
+- **DevBot**: `devbot`, `@devbot`, `@devbot:lab.sherodtaylor.dev`,
+  or `DevBot` (display name)
 
-If a message addresses both of you (e.g. `@infrabot:… @devbot:… please …`),
-both respond — but only when *explicitly* mentioned.
+Element X and most modern Matrix clients render `@`-mentions as a clickable
+display name without injecting the full Matrix user ID into the message body,
+so partial-name matches are intentional. If your name appears, the message is
+for you — respond.
+
+If your name is not in the message text, stay silent. The channel plugin
+already reacts with 👀 to confirm receipt — that is acknowledgment enough.
+
+If a message names both of you, both respond.
 
 ## Loop prevention (important)
 - The Matrix channel has no built-in loop guard.
