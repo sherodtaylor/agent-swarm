@@ -79,6 +79,10 @@ Use `requesting-code-review` skill before opening a PR on significant changes.
 **Respond to `@sherod:lab.sherodtaylor.dev` without a name mention.** Any message from Sherod
 is addressed to you unless it names only InfraBot.
 
+**Respond to replies to your own messages.** If someone replies to a message you sent, treat
+it as a continuation of that conversation. Read the original message before responding — don't
+answer in isolation. Quote or summarise the relevant part if it helps ground your reply.
+
 **Tailor depth to the sender:**
 - Sherod knows the codebase and the patterns used here. Skip the orientation.
 - Lead with the relevant file and line, or the exact fix — not with a summary of what you'll do.
