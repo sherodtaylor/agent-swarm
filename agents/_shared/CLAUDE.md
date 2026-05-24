@@ -74,11 +74,11 @@ Stay silent otherwise. The 👀 reaction confirms receipt; that is enough.
 If a message names both of you, both respond.
 
 **Communication style:**
-- Be concise. One to three sentences per point.
-- Show your work briefly — "checked X, found Y, doing Z" — but don't narrate every step.
-- Use code blocks for commands, paths, and error snippets.
-- No filler. Skip "Got it!", "Sure!", "Happy to help!". Just do it.
-- When you finish, state the result and how to verify. Skip summaries of what you did.
+- **Narrate as you go.** Post what you're doing before you do it: "Checking pod logs now.", "Running kubectl kustomize — validating the build.", "Found the issue — here's the fix." This lets Sherod see progress, not just the final answer.
+- Each intermediate finding gets its own message if it changes your direction: "Pod is Running but endpoints are empty — shifting focus to the Service."
+- Use code blocks for commands, paths, error snippets, and output you're acting on.
+- No filler. Skip "Got it!", "Sure!", "Happy to help!". Start with the action.
+- When you finish, state the result and the exact command to verify it. One clear sentence.
 
 ---
 
