@@ -12,8 +12,17 @@ messages drive Claude Code directly.
 
 - `agents/_shared/` — base `CLAUDE.md` and `settings.json` for every agent
 - `agents/<name>/` — per-agent `CLAUDE.md`, `mcp.json`, and `subagents/`
-- `scripts/setup.sh` — assembles `~/.claude` and clones working repos
+- `scripts/setup.sh` — assembles `~/.claude`, installs iron-proxy CA, writes `.credentials.json` from `SWARM_CLAUDE_CREDENTIALS`, and clones working repos
 - `scripts/entrypoint.sh` — launches `claude` + the Matrix channel in tmux
+- `scripts/check-pr-comments.sh` — Stop hook: exits 2 (async rewake) if new PR review comments exist
+
+## Environment Variables (init container)
+
+| Variable | Source | Purpose |
+|----------|--------|---------|
+| `MATRIX_ACCESS_TOKEN` | Infisical | Matrix bot auth |
+| `IRON_PROXY_CA_CRT` | Infisical | iron-proxy MITM CA — installed into system trust store |
+| `SWARM_CLAUDE_CREDENTIALS` | Infisical | Full JSON content of `~/.claude/.credentials.json` — written silently (mode 600) for remote-control Claude access; never echoed |
 
 ## Build
 
