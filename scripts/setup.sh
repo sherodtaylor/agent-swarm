@@ -13,6 +13,13 @@ if [ ! -d "$AGENT_DIR" ]; then
   exit 1
 fi
 
+# Trust the iron-proxy MITM CA so git, gh, curl, and Node all accept its certs.
+if [ -n "${IRON_PROXY_CA_CRT:-}" ]; then
+  echo "${IRON_PROXY_CA_CRT}" > /usr/local/share/ca-certificates/iron-proxy.crt
+  update-ca-certificates
+  echo "[setup] installed iron-proxy CA"
+fi
+
 mkdir -p "${CLAUDE_DIR}/agents" "${CLAUDE_DIR}/channels/matrix"
 
 # CLAUDE.md = shared base + agent persona
