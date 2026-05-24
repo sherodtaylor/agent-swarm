@@ -20,6 +20,26 @@ if [ -n "${IRON_PROXY_CA_CRT:-}" ]; then
   echo "[setup] installed iron-proxy CA"
 fi
 
+# Write a credentials file with placeholder tokens so Claude Code treats this as
+# a real user session (required for --remote-control). Iron-proxy intercepts all
+# *.anthropic.com requests and replaces proxy-token-claude with the real OAuth token.
+python3 - <<'PY'
+import json, os
+p = os.path.expanduser("~/.claude/.credentials.json")
+creds = {
+    "claudeAiOauth": {
+        "accessToken": "proxy-token-claude",
+        "refreshToken": "proxy-token-claude",
+        "expiresAt": 9999999999999,
+        "scopes": ["openid", "profile", "email", "user:inference"]
+    }
+}
+os.makedirs(os.path.dirname(p), exist_ok=True)
+json.dump(creds, open(p, "w"))
+os.chmod(p, 0o600)
+PY
+echo "[setup] wrote placeholder credentials (iron-proxy will inject real token)"
+
 mkdir -p "${CLAUDE_DIR}/agents" "${CLAUDE_DIR}/channels/matrix"
 
 # CLAUDE.md = shared base + agent persona
@@ -148,4 +168,8 @@ json.dump(d, open(p, "w"))
 PY
 [ -f "${HOME}/.gitconfig" ]       && cp "${HOME}/.gitconfig"       "${RC_HOME}/.gitconfig"
 [ -f "${HOME}/.git-credentials" ] && cp "${HOME}/.git-credentials" "${RC_HOME}/.git-credentials" && chmod 600 "${RC_HOME}/.git-credentials"
+if [ -f "${CLAUDE_DIR}/.credentials.json" ]; then
+  cp "${CLAUDE_DIR}/.credentials.json" "${RC_HOME}/.claude/.credentials.json"
+  chmod 600 "${RC_HOME}/.claude/.credentials.json"
+fi
 echo "[setup] mirrored config to ${RC_HOME} for remote-control claude"
