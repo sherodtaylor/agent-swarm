@@ -20,13 +20,27 @@ if [ -n "${IRON_PROXY_CA_CRT:-}" ]; then
   echo "[setup] installed iron-proxy CA"
 fi
 
-# Write Claude OAuth credentials for the remote-control Claude instance.
-# Never echoed — written directly to file with mode 600.
-if [ -n "${SWARM_CLAUDE_CREDENTIALS:-}" ]; then
-  printf '%s' "${SWARM_CLAUDE_CREDENTIALS}" > "${CLAUDE_DIR}/.credentials.json"
-  chmod 600 "${CLAUDE_DIR}/.credentials.json"
-  echo "[setup] wrote Claude credentials"
-fi
+# Write a credentials file with placeholder tokens so Claude Code treats this as
+# a real user session (required for --remote-control). Iron-proxy intercepts all
+# *.anthropic.com requests and replaces proxy-token-claude with the real OAuth token.
+python3 - <<'PY'
+import json, os
+p = os.path.expanduser("~/.claude/.credentials.json")
+creds = {
+    "claudeAiOauth": {
+        "accessToken": "proxy-token-claude",
+        "refreshToken": "proxy-token-claude",
+        "expiresAt": 9999999999999,
+        "scopes": ["user:file_upload", "user:inference", "user:mcp_servers", "user:profile", "user:sessions:claude_code"],
+        "subscriptionType": "max",
+        "rateLimitTier": "default_claude_max_5x"
+    }
+}
+os.makedirs(os.path.dirname(p), exist_ok=True)
+json.dump(creds, open(p, "w"))
+os.chmod(p, 0o600)
+PY
+echo "[setup] wrote placeholder credentials (iron-proxy will inject real token)"
 
 mkdir -p "${CLAUDE_DIR}/agents" "${CLAUDE_DIR}/channels/matrix"
 
