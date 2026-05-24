@@ -20,27 +20,12 @@ if [ -n "${IRON_PROXY_CA_CRT:-}" ]; then
   echo "[setup] installed iron-proxy CA"
 fi
 
-# Write a credentials file with placeholder tokens so Claude Code treats this as
-# a real user session (required for --remote-control). Iron-proxy intercepts all
-# *.anthropic.com requests and replaces proxy-token-claude with the real OAuth token.
-python3 - <<'PY'
-import json, os
-p = os.path.expanduser("~/.claude/.credentials.json")
-creds = {
-    "claudeAiOauth": {
-        "accessToken": "access-token-stub",
-        "refreshToken": "refresh-token-stub",
-        "expiresAt": 9999999999999,
-        "scopes": ["user:file_upload", "user:inference", "user:mcp_servers", "user:profile", "user:sessions:claude_code"],
-        "subscriptionType": "max",
-        "rateLimitTier": "default_claude_max_5x"
-    }
-}
-os.makedirs(os.path.dirname(p), exist_ok=True)
-json.dump(creds, open(p, "w"))
-os.chmod(p, 0o600)
-PY
-echo "[setup] wrote placeholder credentials (iron-proxy will inject real token)"
+# Write stub OAuth credentials so Claude Code treats this as a real user session.
+# Iron-proxy intercepts all *.anthropic.com requests at the network layer and
+# replaces access-token-stub / refresh-token-stub with the real tokens it holds.
+cp "${APP_DIR}/agents/_shared/.credentials.json" "${CLAUDE_DIR}/.credentials.json"
+chmod 600 "${CLAUDE_DIR}/.credentials.json"
+echo "[setup] wrote stub credentials (iron-proxy injects real tokens at runtime)"
 
 mkdir -p "${CLAUDE_DIR}/agents" "${CLAUDE_DIR}/channels/matrix"
 
