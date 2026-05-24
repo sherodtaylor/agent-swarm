@@ -103,9 +103,22 @@ If a cert isn't showing up in a namespace, check the replicator annotations firs
 ## PR Conventions
 
 - Title prefix: `[infra]`
-- After opening: publish `swarm.events.pr_opened` to NATS, post PR link in `#dev`
+- After opening:
+  1. Publish `swarm.events.pr_opened` to NATS.
+  2. Post in `#dev`: mention DevBot by name and ask for a review, e.g.:
+     `@devbot review please: [PR title](URL)`
+     This is what wakes DevBot — NATS alone won't trigger it.
 - Run `kubectl kustomize <changed-dir>` before pushing — must succeed without errors
 - Never push to `main`
+
+## Cross-agent Code Review
+
+**When DevBot (or anyone) mentions you in `#dev` and asks you to review a PR:**
+1. Fetch the diff: `gh pr diff <n> --repo sherodtaylor/<repo>`
+2. Run the `code-review` skill with `--comment` to post inline findings directly on the PR.
+3. Post a one-line summary in `#dev` when done: "Reviewed #N — N findings, N blocking."
+
+Only review PRs you did **not** open. Never review your own work via this flow.
 
 ---
 
