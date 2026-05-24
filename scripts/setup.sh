@@ -16,6 +16,8 @@ fi
 # Trust the iron-proxy MITM CA so git, gh, curl, and Node all accept its certs.
 if [ -n "${IRON_PROXY_CA_CRT:-}" ]; then
   printf '%s' "${IRON_PROXY_CA_CRT}" > /usr/local/share/ca-certificates/iron-proxy.crt
+  # Also write to home volume so the main container can find it via NODE_EXTRA_CA_CERTS
+  printf '%s' "${IRON_PROXY_CA_CRT}" > "${HOME}/iron-proxy.crt"
   update-ca-certificates 2>/dev/null
   echo "[setup] installed iron-proxy CA"
 fi
