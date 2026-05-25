@@ -54,7 +54,7 @@ created, via ExternalSecrets, sealed-secrets, etc.) with these keys:
 | `rbac.rules` | (see `values.yaml`) | Override for an agent that needs to mutate the cluster |
 | `extraEnv` | `[]` | Extra env vars merged with the chart-managed ones |
 | `nodeSelector`, `tolerations`, `affinity` | `{}` / `[]` / `{}` | |
-| `setup.command` | `""` | Shell snippet run at the end of the init container — see [Personal dotfiles bootstrap](#personal-dotfiles-bootstrap) |
+| `setup.command` | `""` | Shell snippet run at the end of the init container — see [Environment initialization](#environment-initialization) |
 
 ## Upgrading
 
@@ -80,12 +80,14 @@ them by hand if you really want to wipe `~/.claude/` and the cloned repos:
 kubectl delete pvc -n agents -l app.kubernetes.io/instance=infrabot
 ```
 
-## Personal dotfiles bootstrap
+## Environment initialization
 
 `setup.command` is a single shell command (or `;`-separated snippet) executed
 inside the `setup` init container after all built-in setup steps (iron-proxy
 CA, ~/.claude/ assembly, git/gh credentials, repo clones) complete. Use it to
-layer in personal env customizations such as a dotfiles installer:
+layer in environment customizations the chart doesn't ship — bootstrap
+dotfiles, install per-user tooling, fetch additional credentials, or anything
+else your agent needs at boot:
 
 ````yaml
 setup:
@@ -96,9 +98,9 @@ setup:
 - Runs as root in the init container, with `cwd=$HOME`.
 - Inherits every env var on the init container, including `GITHUB_TOKEN`
   (proxy-swapped via iron-proxy) and all keys from the `existingSecret`.
-- Best-effort: non-zero exit logs `[setup] dotfiles: warn — hook exited <rc>
+- Best-effort: non-zero exit logs `[setup] env-init: warn — hook exited <rc>
   (continuing)` to stderr and the pod continues to start.
-- Runs on **every** pod boot. Your installer is responsible for being
+- Runs on **every** pod boot. Your command is responsible for being
   idempotent.
 - Avoid writing to `~/.claude/` — those files were just assembled from the
-  baked-in agent persona and a careless installer can clobber them.
+  baked-in agent persona and a careless command can clobber them.
