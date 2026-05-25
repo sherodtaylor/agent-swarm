@@ -51,7 +51,7 @@ spec:
             - name: NATS_URL
               value: {{ .Values.nats.url | quote }}
             {{- end }}
-            {{- if .Values.setup.command }}
+            {{- if and .Values.setup .Values.setup.command }}
             - name: SETUP_COMMAND
               value: {{ .Values.setup.command | quote }}
             {{- end }}
