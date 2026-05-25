@@ -18,10 +18,10 @@ while true; do
   echo "[claude-loop] credentials restored from template"
 
   START=$(date +%s)
+  EXIT_CODE=0
   claude \
     --dangerously-load-development-channels plugin:matrix@claude-code-channel-matrix \
-    --permission-mode bypassPermissions || true
-  EXIT_CODE=$?
+    --permission-mode bypassPermissions || EXIT_CODE=$?
   UPTIME=$(( $(date +%s) - START ))
 
   echo "[claude-loop] claude exited (code=${EXIT_CODE} uptime=${UPTIME}s)"
