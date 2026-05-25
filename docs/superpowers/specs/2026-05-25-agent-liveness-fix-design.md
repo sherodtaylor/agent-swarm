@@ -1,8 +1,8 @@
 # Agent Liveness Fix — Design Spec
 
 **Date:** 2026-05-25  
-**Scope:** `sherodtaylor/agent-swarm` — `scripts/` + `entrypoint.sh`  
-**Status:** approved, ready for implementation
+**Scope:** `sherodtaylor/agent-smith` — `scripts/` + `entrypoint.sh`  
+**Status:** implemented — PR #26 open on `feat/agent-liveness`
 
 ---
 
@@ -16,9 +16,9 @@ Agent pods (devbot, infrabot) periodically lose liveness because:
 4. iron-proxy swaps `refresh-token-stub` with the real refresh token; Anthropic returns a fresh token pair
 5. **Anthropic's refresh response omits `subscriptionType` and `rateLimitTier`** — these fields only appear in the initial OAuth authorization flow
 6. Claude Code writes the partial response to `.credentials.json`, setting both fields to `null`
-7. On next read of credentials (process restart, or RC pane exit+re-read): `subscriptionType: null` → "need to login to determine your organization account" → process exits
+7. On next process restart: `subscriptionType: null` → "need to login to determine your organization account" → process exits
 
-**Result:** Pane 0 (channels claude) shows `Please run /login`; Pane 1 (`--remote-control`) exits entirely. Agents disconnect from remote control.
+**Result:** The claude process exits and the agent disconnects from remote control.
 
 **Root cause of the refresh trigger:** The real token in iron-proxy's env expires. Re-writing stub credentials before each claude start resets `.credentials.json` to `subscriptionType: "max"` — so even when the refresh eventually happens again and nulls the field, the next restart restores it.
 
@@ -26,23 +26,33 @@ Agent pods (devbot, infrabot) periodically lose liveness because:
 
 ## Solution Overview
 
-Three changes to `sherodtaylor/agent-swarm`:
+Three changes to `sherodtaylor/agent-smith`:
 
 | Component | File(s) | What it does |
 |---|---|---|
-| Restart loop scripts | `scripts/claude-loop.sh`, `scripts/rc-loop.sh` | Re-write stubs before every start; restart on crash with exponential backoff + jitter |
-| `entrypoint.sh` changes | `scripts/entrypoint.sh` | Startup jitter between agents; extend keep-alive loop to continuously handle bypass/devch prompts |
-| Agent keep-alive pane | `scripts/entrypoint.sh` (pane 2) | Periodic organic prompts injected into pane 0 to prevent idle detection signatures |
+| Restart loop script | `scripts/claude-loop.sh` | Re-writes stubs before every start; restarts on crash with exponential backoff + jitter; resumes prior session with `--continue` |
+| `entrypoint.sh` changes | `scripts/entrypoint.sh` | Startup jitter between agents; single-pane claude (channels + RC); extend keep-alive loop to continuously handle prompts |
+| Agent keep-alive pane | `scripts/keepalive-loop.sh` | Periodic organic prompts injected into pane 0 to prevent idle detection signatures |
 
 ---
 
-## Component A: Restart Loop Scripts
+## Component A: Restart Loop Script
 
 ### `scripts/claude-loop.sh`
 
 Runs as the pane 0 process. Before each claude invocation:
-- Copies `_shared/.credentials.json` → `~/.claude/.credentials.json` (restores `subscriptionType: "max"`)
+- Copies `/opt/agent-smith/agents/_shared/.credentials.json` → `~/.claude/.credentials.json` (restores `subscriptionType: "max"`)
 - Sets permissions to 600
+- Checks `SESSION_DIR` (`~/.claude/projects/-workspace-${PRIMARY_REPO}`) — passes `--continue` if a prior session exists
+
+Invokes a single claude with both channels and remote-control:
+```bash
+claude \
+  [--continue] \
+  --dangerously-load-development-channels plugin:matrix@claude-code-channel-matrix \
+  --remote-control "${AGENT_NAME}" \
+  --permission-mode bypassPermissions
+```
 
 On claude exit:
 - Calculates uptime. If > 300s, reset backoff (healthy run, not a crash loop).
@@ -55,12 +65,7 @@ BACKOFF: 15 → 30 → 60 → 120 (cap)
 JITTER:  +0-15 → +0-30 → +0-60 → +0-120  (uniform random)
 ```
 
-### `scripts/rc-loop.sh`
-
-Same structure but for pane 1 (`HOME=/root/rc-home claude --remote-control`):
-- Copies `_shared/.credentials.json` → `/root/rc-home/.claude/.credentials.json`
-- Same backoff/jitter formula
-- Separate BACKOFF counter from pane 0 — they should drift independently
+> **Note:** The original design had a separate `rc-loop.sh` for a second claude process running `--remote-control` with its own HOME. This was dropped when `origin/main` merged a single-claude refactor — one claude now handles both channels and remote-control on the same session.
 
 ---
 
@@ -68,52 +73,36 @@ Same structure but for pane 1 (`HOME=/root/rc-home claude --remote-control`):
 
 ### Change 1 — Startup jitter
 
-Add at the top of the script, before tmux session creation:
-
 ```bash
 # Stagger pod startup to desync devbot/infrabot restart cadence
-sleep $((RANDOM % 45))
+STARTUP_JITTER=$(( RANDOM % 45 ))
+sleep "$STARTUP_JITTER"
 ```
 
-This prevents both agents from being on the same refresh/restart cycle after a simultaneous rollout restart.
+### Change 2 — Pane layout
 
-### Change 2 — Pane commands
+Three panes:
 
-Replace direct claude invocations with the loop scripts:
+| Pane | Command | Purpose |
+|---|---|---|
+| 0 | `bash /opt/agent-smith/scripts/claude-loop.sh` | claude (channels + remote-control) |
+| 1 | *(plain shell)* | Ad-hoc inspection while attached |
+| 2 | `bash /opt/agent-smith/scripts/keepalive-loop.sh` | Organic keep-alive prompts |
 
-- Pane 0: `bash /opt/agent-swarm/scripts/claude-loop.sh`
-- Pane 1: `bash /opt/agent-swarm/scripts/rc-loop.sh`
+`dispatch` is called once after pane 0 starts to handle initial bypass/devch/theme prompts.
 
-`dispatch` is still called once after each pane starts — handles the initial bypass/devch prompts on first start.
+### Change 3 — Keep-alive loop with continuous prompt scanning
 
-### Change 3 — Pane 2 for keep-alive
-
-After creating panes 0 and 1:
-
-```bash
-tmux split-window -v -t main:0 -c "${WORKDIR}"
-tmux pipe-pane -t main:0.2 -o 'cat >> /proc/1/fd/1'
-tmux send-keys -t main:0.2 "bash /opt/agent-swarm/scripts/keepalive-loop.sh" Enter
-```
-
-No dispatch needed — keepalive-loop.sh doesn't show interactive prompts.
-
-### Change 4 — Keep-alive loop extended with continuous prompt scanning
-
-The current keep-alive:
-```bash
-while tmux has-session -t main 2>/dev/null; do
-  sleep 30
-done
-```
-
-Extended to also scan panes every 10s for interactive prompts that appear on post-crash restarts (the loop scripts restart claude but nothing re-runs dispatch):
+Extended keep-alive scans pane 0 every 10s for interactive prompts that appear on post-crash restarts (claude-loop.sh restarts claude but `dispatch()` only runs once at initial startup):
 
 ```bash
 while tmux has-session -t main 2>/dev/null; do
   sleep 10
   for pane in main:0.0 main:0.1; do
     capture="$(tmux capture-pane -p -t "$pane" 2>/dev/null || true)"
+    if printf '%s' "$capture" | grep -q "Choose the text style"; then
+      tmux send-keys -t "$pane" Enter
+    fi
     if printf '%s' "$capture" | grep -qE "Bypass.*Permissions"; then
       tmux send-keys -t "$pane" Down; sleep 0.5; tmux send-keys -t "$pane" Enter
     fi
@@ -124,58 +113,26 @@ while tmux has-session -t main 2>/dev/null; do
 done
 ```
 
-This is idempotent — if the prompt isn't present, nothing is sent.
-
 ---
 
 ## Component C: Agent Keep-Alive Pane
 
-A third tmux pane (pane 2) runs a background loop that injects organic-looking prompts into pane 0 at random intervals. Purpose: prevent flat activity signatures that could flag automated usage.
-
-### Pane 2 command
-
-```bash
-bash /opt/agent-swarm/scripts/keepalive-loop.sh
-```
+Pane 2 runs a background loop that injects organic-looking prompts into pane 0 at random intervals. Purpose: prevent flat activity signatures that could flag automated usage.
 
 ### `scripts/keepalive-loop.sh`
 
 - Random sleep: 3600–10800 seconds (1–3 hours) between prompts
-- Picks a prompt from an agent-specific pool (see below)
+- Picks a prompt from an agent-specific pool
+- Idle check: captures pane snapshot, sleeps 30s, recaptures — if content changed, claude is mid-task, skip cycle
 - Sends via `tmux send-keys -t main:0.0 "<prompt>" Enter`
-- Only fires if pane 0 is idle: capture pane content, check if the last non-empty line matches claude's waiting-for-input prompt pattern (e.g. ends with `>` or contains the human turn marker). If claude appears mid-task (streaming output, tool calls visible), skip this cycle and sleep again.
+
+Prompt file: `/opt/agent-smith/agents/${AGENT_NAME}/keepalive-prompts.txt`
 
 ### Prompt pools
 
-**devbot** (`agents/devbot/keepalive-prompts.txt`):
-```
-Check for any open PRs in the repos I work on that need attention.
-Glance at the last 5 commits in my primary repo and note if anything looks off.
-Run a quick lint or build check on the current branch.
-Are there any failing CI runs on recent PRs?
-Pull the latest on main and check for merge conflicts with the current branch.
-Summarize what I worked on in the last 24 hours based on git log.
-Check if there are any unresolved review comments on my open PRs.
-Look at the most recent issue opened in the homelab repo.
-Check if the agent-swarm image needs a rebuild based on recent Dockerfile changes.
-Scan for any TODO or FIXME comments added in the last week.
-```
+**devbot** (`agents/devbot/keepalive-prompts.txt`): 10 dev-focused prompts (open PRs, recent commits, CI status, lint/build checks, merge conflicts, git log summary, review comments, recent issues, Dockerfile changes, TODO scan)
 
-**infrabot** (`agents/infrabot/keepalive-prompts.txt`):
-```
-Check cluster node status and flag anything not Ready.
-Look for pods in CrashLoopBackOff or Error state.
-Check if any HelmRelease resources are in a failed state.
-Review recent Flux kustomization reconciliation status.
-Check PVC usage across all namespaces.
-Look for any certificate expiry warnings in cert-manager.
-Check if ExternalSecrets are syncing cleanly.
-Scan VictoriaMetrics for any high memory or CPU alerts.
-Review recent Flux events for warnings or errors.
-Check if iron-proxy is healthy and passing traffic.
-```
-
-Prompt file path is resolved from `AGENT_NAME` env var: `/opt/agent-swarm/agents/${AGENT_NAME}/keepalive-prompts.txt`
+**infrabot** (`agents/infrabot/keepalive-prompts.txt`): 10 infra-focused prompts (node status, crashloop pods, HelmRelease failures, Flux reconciliation, PVC usage, cert-manager expiry, ExternalSecrets, VictoriaMetrics alerts, Flux events, iron-proxy health)
 
 ---
 
@@ -183,25 +140,26 @@ Prompt file path is resolved from `AGENT_NAME` env var: `/opt/agent-swarm/agents
 
 **New files:**
 - `scripts/claude-loop.sh`
-- `scripts/rc-loop.sh`
 - `scripts/keepalive-loop.sh`
 - `agents/devbot/keepalive-prompts.txt`
 - `agents/infrabot/keepalive-prompts.txt`
+- `tests/test-loops.sh`
 
 **Modified files:**
-- `scripts/entrypoint.sh` — startup jitter, pane commands → loop scripts, extended keep-alive loop, add pane 2
+- `scripts/entrypoint.sh` — startup jitter, loop script for pane 0, plain shell pane 1, keepalive pane 2, extended keep-alive loop
+- `Dockerfile` — chmod new scripts
 
 **Unchanged:**
-- `scripts/setup.sh` — credential template write at pod init is correct as-is; no changes needed
-- `agents/_shared/.credentials.json` — stub is correct; loop scripts re-copy it at runtime
+- `scripts/setup.sh` — credential template write at pod init is correct as-is
+- `agents/_shared/.credentials.json` — stub is correct; claude-loop.sh re-copies it at runtime
 
 ---
 
 ## Error Handling
 
-- If `_shared/.credentials.json` is missing: loop scripts log and exit 1 (pod will restart via k8s)
-- If claude exits with code 0 (clean exit, not crash): backoff still applies — clean exit is unusual and shouldn't tight-loop
-- If pane 2 (keepalive) crashes: it doesn't affect pane 0/1; entrypoint keep-alive loop does NOT restart pane 2 — it's optional/additive
+- If `_shared/.credentials.json` is missing: claude-loop.sh logs and exits 1 (pod will restart via k8s)
+- If claude exits with code 0 (clean exit): backoff still applies — clean exit is unusual and shouldn't tight-loop
+- If pane 2 (keepalive) crashes: it doesn't affect pane 0; entrypoint keep-alive loop does NOT restart pane 2 — it's optional/additive
 - Keepalive only fires when pane 0 is idle to avoid injecting a prompt mid-task
 
 ---
@@ -209,8 +167,17 @@ Prompt file path is resolved from `AGENT_NAME` env var: `/opt/agent-swarm/agents
 ## Testing / Verification
 
 1. Build image with changes, deploy to one agent (devbot first)
-2. Trigger a forced token expiry: `kubectl exec devbot-0 -n agents -- bash -c "pkill -f claude"`
-3. Observe: loop re-writes stubs, restarts claude, pane 0 recovers without "need to login"
-4. Verify `.credentials.json` shows `subscriptionType: "max"` after restart: `kubectl exec devbot-0 -n agents -- cat /root/.claude/.credentials.json | jq .claudeAiOauth.subscriptionType`
-5. Confirm pane 1 (RC) also recovers independently
-6. After 30min, verify both panes still alive and responding to Matrix messages
+2. Trigger a forced restart: `kubectl exec -n agents devbot-0 -- bash -c "pkill -f claude"`
+3. Observe: claude-loop.sh re-writes stubs, restarts claude, process recovers without "need to login"
+4. Verify `.credentials.json` shows `subscriptionType: "max"` after restart:
+   ```bash
+   kubectl exec -n agents devbot-0 -- bash -c "cat /root/.claude/.credentials.json | jq .claudeAiOauth.subscriptionType"
+   ```
+5. After 30min, verify agent still alive and responding to Matrix messages
+
+### Automated smoke tests
+
+`bash tests/test-loops.sh` — 3 tests using mock claude binary:
+1. credential restoration: `subscriptionType` is `"max"` at every invocation even after corruption
+2. claude-loop.sh exits 1 on missing credential template
+3. keepalive-loop.sh exits 0 when prompts file is absent
