@@ -53,6 +53,7 @@ COPY --from=mcp-nats-builder /out/mcp-nats /usr/local/bin/mcp-nats
 WORKDIR /opt/agent-swarm
 COPY agents/   ./agents/
 COPY scripts/  ./scripts/
-RUN chmod +x scripts/setup.sh scripts/entrypoint.sh
+RUN chmod +x scripts/setup.sh scripts/entrypoint.sh \
+              scripts/claude-loop.sh scripts/rc-loop.sh scripts/keepalive-loop.sh
 
 CMD ["/opt/agent-swarm/scripts/entrypoint.sh"]
