@@ -1,0 +1,20 @@
+{{ .Chart.Name }} v{{ .Chart.AppVersion }} installed as release "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}".
+
+Agent: {{ .Values.agentName }}
+Image: {{ include "agent-swarm.image" . }}
+
+Watch the pod come up:
+  kubectl rollout status statefulset/{{ include "agent-swarm.fullname" . }} -n {{ .Release.Namespace }}
+
+Attach to the tmux session (pane 0 = claude, pane 1 = shell):
+  kubectl exec -it -n {{ .Release.Namespace }} {{ include "agent-swarm.fullname" . }}-0 -- tmux attach -t main
+
+Tail logs:
+  kubectl logs -n {{ .Release.Namespace }} -f {{ include "agent-swarm.fullname" . }}-0
+{{- if not .Values.existingSecret }}
+
+WARNING: existingSecret is empty. The bot will start but lacks
+MATRIX_ACCESS_TOKEN / GITHUB_TOKEN / IRON_PROXY_CA_CRT — create a Secret
+with those keys and `helm upgrade --set existingSecret=<name>` before
+expecting the agent to be useful.
+{{- end }}
