@@ -8,4 +8,3 @@ Check if ExternalSecrets are syncing cleanly.
 Review recent Flux events for warnings or errors.
 Check if iron-proxy is healthy and passing traffic.
 Check if any StatefulSet pods are not Ready.
-
