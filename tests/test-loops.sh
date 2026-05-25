@@ -46,20 +46,14 @@ COUNT=$((COUNT + 1))
 echo "$COUNT" > "$RUNFILE"
 
 # Record whether subscriptionType was 'max' at this invocation
-SUBTYPE=$(python3 -c "
-import json, sys
-with open(sys.argv[1]) as f: d = json.load(f)
-print(d['claudeAiOauth']['subscriptionType'])
-" "$CREDS" 2>/dev/null || echo "error")
-echo "$SUBTYPE" >> "$RESTORE_LOG"
+if grep -q '"subscriptionType":"max"' "$CREDS" 2>/dev/null; then
+  echo "max" >> "$RESTORE_LOG"
+else
+  echo "null" >> "$RESTORE_LOG"
+fi
 
 # Corrupt the credential (simulates OAuth token refresh clobbering it)
-python3 -c "
-import json, sys
-with open(sys.argv[1]) as f: d = json.load(f)
-d['claudeAiOauth']['subscriptionType'] = None
-with open(sys.argv[1], 'w') as f: json.dump(d, f)
-" "$CREDS" 2>/dev/null || true
+sed -i 's/"subscriptionType":"[^"]*"/"subscriptionType":null/g' "$CREDS"
 
 if [ "$COUNT" -ge 3 ]; then exit 0; fi
 exit 1
