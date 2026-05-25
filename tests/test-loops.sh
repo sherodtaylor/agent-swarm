@@ -123,6 +123,36 @@ else
   fail "keepalive-loop.sh expected exit 0, got exit ${EXIT_CODE}"
 fi
 
+# ── Test 5: rc-loop.sh writes credentials to /root/rc-home ──
+echo "--- Test 5: rc-loop.sh credential destination ---"
+if [ -w "/root" ] || [ -w "/root/rc-home" ] 2>/dev/null; then
+  mkdir -p /root/rc-home/.claude
+  rm -f /root/rc-home/.claude/.credentials.json
+
+  # Run rc-loop.sh briefly (it will try to start claude and fail immediately)
+  CREDS_SRC="$CREDS_SRC" PATH="${MOCK_BIN}:${PATH}" \
+    timeout 5 bash "${SCRIPT_DIR}/../scripts/rc-loop.sh" 2>/dev/null || true
+
+  # The loop should have copied credentials before trying to run claude
+  if [ -f "/root/rc-home/.claude/.credentials.json" ]; then
+    SUBTYPE=$(python3 -c "
+import json
+with open('/root/rc-home/.claude/.credentials.json') as f:
+    d = json.load(f)
+print(d['claudeAiOauth']['subscriptionType'])
+" 2>/dev/null || echo "error")
+    if [ "$SUBTYPE" = "max" ]; then
+      pass "rc-loop.sh writes credentials with subscriptionType='max' to /root/rc-home"
+    else
+      fail "rc-loop.sh wrote credentials but subscriptionType='${SUBTYPE}' not 'max'"
+    fi
+  else
+    fail "rc-loop.sh did not write credentials to /root/rc-home/.claude/.credentials.json"
+  fi
+else
+  echo "SKIP: Test 5 requires write access to /root — skipping in non-root environment"
+fi
+
 # ── Summary ──
 echo ""
 echo "Results: ${PASS} passed, ${FAIL} failed"

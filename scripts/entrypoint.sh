@@ -95,6 +95,9 @@ while tmux has-session -t main 2>/dev/null; do
   sleep 10
   for pane in main:0.0 main:0.1; do
     capture="$(tmux capture-pane -p -t "$pane" 2>/dev/null || true)"
+    if printf '%s' "$capture" | grep -q "Choose the text style"; then
+      tmux send-keys -t "$pane" Enter
+    fi
     if printf '%s' "$capture" | grep -qE "Bypass.*Permissions"; then
       tmux send-keys -t "$pane" Down
       sleep 0.5
