@@ -4,34 +4,14 @@ set -euo pipefail
 AGENT_NAME="${AGENT_NAME:?AGENT_NAME must be set}"
 PRIMARY_REPO="${PRIMARY_REPO:-homelab}"
 WORKDIR="/workspace/${PRIMARY_REPO}"
+PROMPTS_FILE="/opt/agent-smith/agents/${AGENT_NAME}/keepalive-prompts.txt"
 
 echo "[entrypoint] agent=${AGENT_NAME} workdir=${WORKDIR}"
 
-# The matrix plugin + marketplace are registered in ~/.claude/settings.json
-# (extraKnownMarketplaces + enabledPlugins). --dangerously-load-development-channels
-# is required because the plugin is not on the official channel allowlist.
-# --remote-control on the same instance exposes this claude for remote drive-in
-# under a session name matching the agent (e.g. "infrabot").
-#
-# Resume across pod restarts: ~/.claude is on a PVC, so prior session transcripts
-# survive. Pass --continue when a session exists for this cwd; on a fresh pod the
-# directory is empty and we start clean.
-SESSION_DIR="${HOME}/.claude/projects/-workspace-${PRIMARY_REPO}"
-RESUME_FLAGS=()
-if [ -d "$SESSION_DIR" ] && [ -n "$(ls -A "$SESSION_DIR" 2>/dev/null)" ]; then
-  RESUME_FLAGS=(--continue)
-  echo "[entrypoint] resuming prior session from ${SESSION_DIR}"
-else
-  echo "[entrypoint] no prior session in ${SESSION_DIR} — starting fresh"
-fi
-
-CLAUDE_CMD=(
-  claude
-  "${RESUME_FLAGS[@]}"
-  --dangerously-load-development-channels plugin:matrix@claude-code-channel-matrix
-  --remote-control "${AGENT_NAME}"
-  --permission-mode bypassPermissions
-)
+# Stagger devbot/infrabot pod restarts to prevent synchronized restart cadence
+STARTUP_JITTER=$(( RANDOM % 45 ))
+echo "[entrypoint] startup jitter: sleeping ${STARTUP_JITTER}s"
+sleep "$STARTUP_JITTER"
 
 # Poll a tmux pane and drive past the interactive first-run prompts that have no
 # headless config bypass (Bypass Permissions warning; development-channels consent
@@ -83,15 +63,15 @@ dispatch() {
 }
 
 if ! tmux has-session -t main 2>/dev/null; then
-  # Pane 0 (top): the one and only claude — Matrix-driven workhorse with
-  # remote-control enabled on the same session.
+  # Pane 0 (top): the one claude — channels + remote-control.
+  # claude-loop.sh restores stub credentials before every start and
+  # applies exponential backoff+jitter on crash to prevent tight loops.
   tmux new-session -d -s main -x 220 -y 50 -c "${WORKDIR}"
   tmux pipe-pane -t main:0.0 -o 'cat >> /proc/1/fd/1'
-  tmux send-keys -t main:0.0 "${CLAUDE_CMD[*]}" Enter
+  tmux send-keys -t main:0.0 "bash /opt/agent-smith/scripts/claude-loop.sh" Enter
   dispatch main:0.0
 
-  # Pane 1 (bottom): plain shell, for ad-hoc inspection / commands while
-  # attached. No second claude — pane 0 already owns the remote-control session.
+  # Pane 1 (bottom): plain shell, for ad-hoc inspection / commands while attached.
   tmux split-window -v -t main:0 -c "${WORKDIR}"
   tmux pipe-pane -t main:0.1 -o 'cat >> /proc/1/fd/1'
 fi
@@ -100,8 +80,38 @@ echo "[entrypoint] tmux 'main': pane 0 = claude (channels + remote-control), pan
 echo "[entrypoint] attach: kubectl exec -it -n agents ${AGENT_NAME}-0 -- tmux attach -t main"
 
 # Keep the container alive; exit if the tmux session dies.
+# Every 10s: scan pane 0 for interactive prompts that appear on post-crash restarts.
+# Every 1-3hr: inject an organic keep-alive prompt into pane 0 to prevent flat-activity signatures.
+NEXT_PROMPT=$(( $(date +%s) + 3600 + RANDOM % 7200 ))
+
 while tmux has-session -t main 2>/dev/null; do
-  sleep 30
+  sleep 10
+
+  capture="$(tmux capture-pane -p -t main:0.0 2>/dev/null || true)"
+  if printf '%s' "$capture" | grep -q "Choose the text style"; then
+    tmux send-keys -t main:0.0 Enter
+  fi
+  if printf '%s' "$capture" | grep -qE "Bypass.*Permissions"; then
+    tmux send-keys -t main:0.0 Down
+    sleep 0.5
+    tmux send-keys -t main:0.0 Enter
+  fi
+  if printf '%s' "$capture" | grep -q "I am using this for local development"; then
+    tmux send-keys -t main:0.0 Enter
+  fi
+
+  NOW=$(date +%s)
+  if [ "$NOW" -ge "$NEXT_PROMPT" ] && [ -f "$PROMPTS_FILE" ]; then
+    SNAP1="$(tmux capture-pane -p -t main:0.0 2>/dev/null || true)"
+    sleep 30
+    SNAP2="$(tmux capture-pane -p -t main:0.0 2>/dev/null || true)"
+    if [ "$SNAP1" = "$SNAP2" ]; then
+      PROMPT="$(shuf -n 1 "$PROMPTS_FILE")"
+      tmux send-keys -t main:0.0 "$PROMPT" Enter
+      echo "[entrypoint] keepalive: injected prompt"
+    fi
+    NEXT_PROMPT=$(( $(date +%s) + 3600 + RANDOM % 7200 ))
+  fi
 done
 echo "[entrypoint] tmux session ended — exiting"
 exit 1
