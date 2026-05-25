@@ -1,0 +1,135 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "agent-swarm.fullname" . }}
+  labels:
+    {{- include "agent-swarm.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "agent-swarm.fullname" . }}
+  replicas: 1
+  podManagementPolicy: OrderedReady
+  selector:
+    matchLabels:
+      {{- include "agent-swarm.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "agent-swarm.labels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "agent-swarm.serviceAccountName" . }}
+      {{- if .Values.ironProxy.enabled }}
+      dnsPolicy: None
+      dnsConfig:
+        nameservers:
+          - {{ .Values.ironProxy.clusterIp | quote }}
+        searches:
+          - {{ .Release.Namespace }}.svc.cluster.local
+          - svc.cluster.local
+          - cluster.local
+      {{- end }}
+      initContainers:
+        - name: setup
+          image: {{ include "agent-swarm.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["/opt/agent-swarm/scripts/setup.sh"]
+          env:
+            - name: AGENT_NAME
+              value: {{ .Values.agentName | quote }}
+            - name: AGENT_REPOS
+              value: {{ join " " .Values.agentRepos | quote }}
+            - name: PRIMARY_REPO
+              value: {{ .Values.primaryRepo | quote }}
+            - name: MATRIX_HOMESERVER_URL
+              value: {{ .Values.matrix.homeserverUrl | quote }}
+            - name: MATRIX_BOT_USER_ID
+              value: {{ .Values.matrix.botUserId | quote }}
+            {{- if .Values.matrix.allowedUsers }}
+            - name: MATRIX_ALLOWED_USERS
+              value: {{ .Values.matrix.allowedUsers | quote }}
+            {{- end }}
+            {{- if .Values.nats.url }}
+            - name: NATS_URL
+              value: {{ .Values.nats.url | quote }}
+            {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- if .Values.existingSecret }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.existingSecret }}
+          {{- end }}
+          volumeMounts:
+            - name: home
+              mountPath: /root
+            - name: workspace
+              mountPath: /workspace
+      containers:
+        - name: agent
+          image: {{ include "agent-swarm.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          # tmux needs a TTY; the entrypoint backgrounds it but pane-attach via
+          # `kubectl exec -it ... -- tmux attach -t main` expects one.
+          tty: true
+          stdin: true
+          env:
+            - name: AGENT_NAME
+              value: {{ .Values.agentName | quote }}
+            - name: PRIMARY_REPO
+              value: {{ .Values.primaryRepo | quote }}
+            {{- if .Values.nats.url }}
+            - name: NATS_URL
+              value: {{ .Values.nats.url | quote }}
+            {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- if .Values.existingSecret }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.existingSecret }}
+          {{- end }}
+          volumeMounts:
+            - name: home
+              mountPath: /root
+            - name: workspace
+              mountPath: /workspace
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  volumeClaimTemplates:
+    {{- if .Values.persistence.home.enabled }}
+    - metadata:
+        name: home
+      spec:
+        accessModes: [{{ .Values.persistence.home.accessMode | quote }}]
+        {{- with .Values.persistence.home.storageClass }}
+        storageClassName: {{ . | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.home.size | quote }}
+    {{- end }}
+    {{- if .Values.persistence.workspace.enabled }}
+    - metadata:
+        name: workspace
+      spec:
+        accessModes: [{{ .Values.persistence.workspace.accessMode | quote }}]
+        {{- with .Values.persistence.workspace.storageClass }}
+        storageClassName: {{ . | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.workspace.size | quote }}
+    {{- end }}

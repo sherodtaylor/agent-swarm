@@ -381,7 +381,37 @@ git tag -a v0.1.0 -m "Release v0.1.0 — …"
 git push origin v0.1.0
 ```
 
-The workflow fires on the tag push and produces the four release tags above.
+The workflow fires on the tag push and produces the four image tags above **and** the
+matching Helm chart (see below).
+
+### Helm chart
+
+The chart in [`charts/agent-swarm/`](charts/agent-swarm) packages a single agent as a
+`StatefulSet` with ServiceAccount + ClusterRole, two PVCs (`~/.claude/`, `/workspace/`),
+and optional iron-proxy DNS routing. The same release workflow that publishes the image
+also packages the chart and pushes it to GHCR as an OCI artifact:
+
+| Trigger | Chart artifact |
+|---|---|
+| git tag `vX.Y.Z` | `oci://ghcr.io/sherodtaylor/charts/agent-swarm:X.Y.Z` + `.tgz` attached to the GH Release |
+
+Install one agent:
+
+```bash
+helm install infrabot oci://ghcr.io/sherodtaylor/charts/agent-swarm \
+  --version 0.1.0 \
+  --namespace agents --create-namespace \
+  --set agentName=infrabot \
+  --set matrix.homeserverUrl=https://matrix.example.com \
+  --set matrix.botUserId='@infrabot:example.com' \
+  --set nats.url=nats://nats.svc:4222 \
+  --set existingSecret=infrabot-secrets
+```
+
+`existingSecret` is **required** and must contain `MATRIX_ACCESS_TOKEN`, `GITHUB_TOKEN`,
+and `IRON_PROXY_CA_CRT`. The chart doesn't manage the secret itself — bring your own
+(manual, ExternalSecrets, sealed-secrets, …). Full values reference in
+[`charts/agent-swarm/README.md`](charts/agent-swarm/README.md).
 
 ### Logs
 
