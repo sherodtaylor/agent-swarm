@@ -124,4 +124,19 @@ for repo in ${AGENT_REPOS:-sherodtaylor/homelab}; do
   fi
 done
 
+# Optional user-supplied bootstrap hook (e.g. dotfiles installer).
+# Runs after CA/git/.claude/repos are in place. Best-effort: a failure logs a
+# warning and does NOT block the pod from starting.
+if [ -n "${SETUP_COMMAND:-}" ]; then
+  echo "[setup] dotfiles: running user hook"
+  if ( cd "${HOME}" && bash -c "${SETUP_COMMAND}" ); then
+    echo "[setup] dotfiles: hook ok"
+  else
+    rc=$?
+    echo "[setup] dotfiles: warn — hook exited ${rc} (continuing)" >&2
+  fi
+else
+  echo "[setup] dotfiles: no setup.command configured, skipping"
+fi
+
 echo "[setup] complete"
