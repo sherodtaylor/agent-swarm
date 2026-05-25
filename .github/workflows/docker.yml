@@ -32,7 +32,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/sherodtaylor/agent-swarm
+          images: ghcr.io/sherodtaylor/agent-smith
           tags: |
             type=ref,event=branch,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
             type=sha,prefix=sha-,format=short,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
@@ -41,9 +41,9 @@ jobs:
             type=semver,pattern={{major}}
             type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
           labels: |
-            org.opencontainers.image.title=agent-swarm
+            org.opencontainers.image.title=agent-smith
             org.opencontainers.image.description=Chat-driven Claude Code engineering teammates for a self-hosted homelab
-            org.opencontainers.image.source=https://github.com/sherodtaylor/agent-swarm
+            org.opencontainers.image.source=https://github.com/sherodtaylor/agent-smith
             org.opencontainers.image.licenses=MIT
 
       - name: Build and push
@@ -78,7 +78,7 @@ jobs:
 
       - name: Lint chart
         run: |
-          helm lint charts/agent-swarm \
+          helm lint charts/agent-smith \
             --set agentName=ci \
             --set matrix.homeserverUrl=https://x \
             --set matrix.botUserId=@y:x \
@@ -87,7 +87,7 @@ jobs:
       - name: Package chart
         run: |
           mkdir -p dist
-          helm package charts/agent-swarm \
+          helm package charts/agent-smith \
             --version "${{ steps.version.outputs.version }}" \
             --app-version "${{ steps.version.outputs.version }}" \
             --destination dist/
@@ -99,11 +99,11 @@ jobs:
 
       - name: Push chart to GHCR OCI
         run: |
-          helm push "dist/agent-swarm-${{ steps.version.outputs.version }}.tgz" \
+          helm push "dist/agent-smith-${{ steps.version.outputs.version }}.tgz" \
             oci://ghcr.io/sherodtaylor/charts
 
       - name: Attach chart to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/agent-swarm-*.tgz
+          files: dist/agent-smith-*.tgz
           fail_on_unmatched_files: true
