@@ -1,0 +1,19 @@
+apiVersion: v2
+name: agent-smith
+description: Chat-driven Claude Code engineering teammates for a self-hosted homelab
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+home: https://github.com/sherodtaylor/agent-smith
+sources:
+  - https://github.com/sherodtaylor/agent-smith
+maintainers:
+  - name: sherodtaylor
+    url: https://github.com/sherodtaylor
+keywords:
+  - claude-code
+  - ai-agent
+  - matrix
+  - chatops
+  - mcp
+icon: https://avatars.githubusercontent.com/u/1483092?v=4

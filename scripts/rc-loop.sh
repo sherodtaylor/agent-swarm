@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CREDS_SRC="${CREDS_SRC:-/opt/agent-swarm/agents/_shared/.credentials.json}"
+CREDS_SRC="${CREDS_SRC:-/opt/agent-smith/agents/_shared/.credentials.json}"
 RC_HOME="/root/rc-home"
 CREDS_DST="${RC_HOME}/.claude/.credentials.json"
 BACKOFF=15

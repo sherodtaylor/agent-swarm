@@ -3,6 +3,8 @@ name: Build and push image
 on:
   push:
     branches: [main]
+    tags: ['v*.*.*']
+  workflow_dispatch:
 
 jobs:
   build:
@@ -13,6 +15,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Log in to ghcr.io
         uses: docker/login-action@v3
         with:
@@ -20,9 +25,85 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # push to main  -> :main, :sha-<short>
+      # tag vX.Y.Z    -> :vX.Y.Z, :vX.Y, :vX, :latest
+      # :latest only moves on a vX.Y.Z release, never on main.
+      - name: Compute image tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/sherodtaylor/agent-smith
+          tags: |
+            type=ref,event=branch,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
+            type=sha,prefix=sha-,format=short,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+          labels: |
+            org.opencontainers.image.title=agent-smith
+            org.opencontainers.image.description=Chat-driven Claude Code engineering teammates for a self-hosted homelab
+            org.opencontainers.image.source=https://github.com/sherodtaylor/agent-smith
+            org.opencontainers.image.licenses=MIT
+
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: ghcr.io/sherodtaylor/agent-swarm:latest
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  chart:
+    name: Package + publish Helm chart
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.16.4
+
+      - name: Derive chart version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Lint chart
+        run: |
+          helm lint charts/agent-smith \
+            --set agentName=ci \
+            --set matrix.homeserverUrl=https://x \
+            --set matrix.botUserId=@y:x \
+            --set existingSecret=z
+
+      - name: Package chart
+        run: |
+          mkdir -p dist
+          helm package charts/agent-smith \
+            --version "${{ steps.version.outputs.version }}" \
+            --app-version "${{ steps.version.outputs.version }}" \
+            --destination dist/
+
+      - name: Log in to GHCR for Helm
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" \
+            | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Push chart to GHCR OCI
+        run: |
+          helm push "dist/agent-smith-${{ steps.version.outputs.version }}.tgz" \
+            oci://ghcr.io/sherodtaylor/charts
+
+      - name: Attach chart to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/agent-smith-*.tgz
+          fail_on_unmatched_files: true

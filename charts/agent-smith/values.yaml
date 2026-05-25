@@ -1,0 +1,111 @@
+# Required — selects the persona under agents/<agentName>/ inside the image
+# (e.g. "infrabot" or "devbot"; must match a directory baked into the image)
+agentName: ""
+
+image:
+  repository: ghcr.io/sherodtaylor/agent-smith
+  # tag defaults to Chart.AppVersion when empty; override to track a specific
+  # build (e.g. "v0.1.0", "main", "sha-abc1234")
+  tag: ""
+  pullPolicy: IfNotPresent
+
+# Repositories the init container clones into /workspace/<basename>
+agentRepos:
+  - sherodtaylor/homelab
+
+# /workspace/<primaryRepo> becomes the agent's working directory at startup
+primaryRepo: homelab
+
+matrix:
+  homeserverUrl: ""    # e.g. "https://matrix.example.com"
+  botUserId: ""        # e.g. "@devbot:example.com"
+  # Comma-separated allowlist of Matrix users the bot will respond to.
+  # Leave empty to default to "@<owner>:..." inside setup.sh.
+  allowedUsers: ""
+
+nats:
+  # e.g. "nats://nats.agent-infra.svc.cluster.local:4222"
+  url: ""
+
+# Secret-handling: the chart does NOT manage the underlying Secret. Point it
+# at one you already have (created manually, by ExternalSecrets, or by sealed-
+# secrets) that contains the runtime env vars. Required keys:
+#
+#   MATRIX_ACCESS_TOKEN   Matrix bot login token
+#   GITHUB_TOKEN          Placeholder proxy token (iron-proxy swaps in real PAT)
+#   IRON_PROXY_CA_CRT     iron-proxy MITM CA, PEM
+existingSecret: ""
+
+# iron-proxy egress credential firewall integration. When enabled, the pod's
+# dnsPolicy is set to None and DNS is pointed at iron-proxy so HTTPS egress is
+# intercepted and real GitHub / Anthropic credentials swapped in at the edge.
+# Disable only if you understand the safety implications — the pod will then
+# need real tokens at rest.
+ironProxy:
+  enabled: true
+  # ClusterIP of the iron-proxy service.
+  clusterIp: 10.43.100.100
+
+persistence:
+  # /root holds the assembled ~/.claude/ (settings, plugins, credentials, hooks)
+  home:
+    enabled: true
+    size: 10Gi
+    storageClass: ""        # empty = cluster default
+    accessMode: ReadWriteOnce
+  # /workspace/<repo> is where the bot's checkouts live; lose this and the
+  # bot has to re-clone on every restart
+  workspace:
+    enabled: true
+    size: 20Gi
+    storageClass: ""
+    accessMode: ReadWriteOnce
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: "2"
+    memory: 4Gi
+
+serviceAccount:
+  create: true
+  # Defaults to the release-qualified name when empty
+  name: ""
+
+# Cluster-scoped RBAC for the agent's ServiceAccount. The chart ships
+# read-only defaults that are safe for InfraBot-style observation; for an
+# agent that needs to mutate the cluster, override with a wider rule set.
+rbac:
+  create: true
+  rules:
+    - apiGroups: [""]
+      resources: ["pods", "services", "configmaps", "events", "namespaces", "nodes"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: [""]
+      resources: ["pods/log"]
+      verbs: ["get", "list"]
+    - apiGroups: ["apps"]
+      resources: ["deployments", "statefulsets", "daemonsets", "replicasets"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: ["helm.toolkit.fluxcd.io"]
+      resources: ["helmreleases"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: ["kustomize.toolkit.fluxcd.io"]
+      resources: ["kustomizations"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: ["source.toolkit.fluxcd.io"]
+      resources: ["gitrepositories", "helmrepositories", "ocirepositories"]
+      verbs: ["get", "list", "watch"]
+
+# Standard scheduling knobs
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# Extra env vars (merged with the chart-managed ones) — useful for per-agent
+# tweaks without forking the chart
+extraEnv: []
+# - name: FOO
+#   value: bar

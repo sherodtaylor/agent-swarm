@@ -2,7 +2,7 @@
 set -euo pipefail
 
 AGENT_NAME="${AGENT_NAME:?AGENT_NAME must be set}"
-PROMPTS_FILE="/opt/agent-swarm/agents/${AGENT_NAME}/keepalive-prompts.txt"
+PROMPTS_FILE="/opt/agent-smith/agents/${AGENT_NAME}/keepalive-prompts.txt"
 PANE="main:0.0"
 MIN_SLEEP=3600
 MAX_SLEEP=10800

@@ -50,10 +50,10 @@ RUN curl -fsSL https://bun.sh/install | bash
 COPY --from=mcp-nats-builder /out/mcp-nats /usr/local/bin/mcp-nats
 
 # App code
-WORKDIR /opt/agent-swarm
+WORKDIR /opt/agent-smith
 COPY agents/   ./agents/
 COPY scripts/  ./scripts/
 RUN chmod +x scripts/setup.sh scripts/entrypoint.sh \
               scripts/claude-loop.sh scripts/rc-loop.sh scripts/keepalive-loop.sh
 
-CMD ["/opt/agent-swarm/scripts/entrypoint.sh"]
+CMD ["/opt/agent-smith/scripts/entrypoint.sh"]

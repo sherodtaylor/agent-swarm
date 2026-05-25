@@ -62,34 +62,32 @@ dispatch() {
 }
 
 if ! tmux has-session -t main 2>/dev/null; then
-  # Pane 0 (top): channels claude — Matrix-driven workhorse.
+  # Pane 0 (top): the one claude — channels + remote-control.
   # claude-loop.sh restores stub credentials before every start and
   # applies exponential backoff+jitter on crash to prevent tight loops.
   tmux new-session -d -s main -x 220 -y 50 -c "${WORKDIR}"
   tmux pipe-pane -t main:0.0 -o 'cat >> /proc/1/fd/1'
-  tmux send-keys -t main:0.0 "bash /opt/agent-swarm/scripts/claude-loop.sh" Enter
+  tmux send-keys -t main:0.0 "bash /opt/agent-smith/scripts/claude-loop.sh" Enter
   dispatch main:0.0
 
-  # Pane 1 (bottom): remote-control claude with its own HOME.
-  # rc-loop.sh restores credentials to /root/rc-home before every start.
+  # Pane 1 (bottom): plain shell, for ad-hoc inspection / commands while
+  # attached. No second claude — pane 0 already owns the remote-control session.
   tmux split-window -v -t main:0 -c "${WORKDIR}"
   tmux pipe-pane -t main:0.1 -o 'cat >> /proc/1/fd/1'
-  tmux send-keys -t main:0.1 "bash /opt/agent-swarm/scripts/rc-loop.sh" Enter
-  dispatch main:0.1
 
   # Pane 2 (background): organic keep-alive prompts injected into pane 0
   # at random 1-3hr intervals to prevent flat-activity detection signatures.
   tmux split-window -v -t main:0 -c "${WORKDIR}"
   tmux pipe-pane -t main:0.2 -o 'cat >> /proc/1/fd/1'
-  tmux send-keys -t main:0.2 "bash /opt/agent-swarm/scripts/keepalive-loop.sh" Enter
+  tmux send-keys -t main:0.2 "bash /opt/agent-smith/scripts/keepalive-loop.sh" Enter
 fi
 
-echo "[entrypoint] tmux 'main': pane 0 = channels, pane 1 = remote-control claude, pane 2 = keepalive"
+echo "[entrypoint] tmux 'main': pane 0 = claude (channels + remote-control), pane 1 = shell, pane 2 = keepalive"
 echo "[entrypoint] attach: kubectl exec -it -n agents ${AGENT_NAME}-0 -- tmux attach -t main"
 
 # Keep the container alive; exit if the tmux session dies.
-# Also continuously scan panes 0 and 1 for interactive prompts that appear
-# on post-crash restarts (the loop scripts restart claude but dispatch() only
+# Also continuously scan pane 0 for interactive prompts that appear
+# on post-crash restarts (claude-loop.sh restarts claude but dispatch() only
 # runs once at initial startup).
 while tmux has-session -t main 2>/dev/null; do
   sleep 10
