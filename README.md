@@ -37,6 +37,41 @@ do not *engineer*.
 Everything else — the image layout, the init container, the tmux dance, the hooks — exists
 to make that work reliably as a single Kubernetes `StatefulSet` per agent.
 
+### Why Claude Code CLI (not the Agent SDK, `claude -p`, or an alternative wrapper)
+
+agent-swarm deliberately runs the **interactive Claude Code CLI** as a long-lived process
+per agent. The plausible alternatives each lose something load-bearing:
+
+- **The [Claude Agent SDK](https://support.claude.com/en/articles/15036540-use-the-claude-agent-sdk-with-your-claude-plan)**
+  is the obvious-looking pick for "build a bot on Claude" — but programmatic SDK use is
+  billed as Anthropic API consumption, *separate* from a Claude Pro / Max subscription.
+  For a homelab answering dozens of Matrix messages a day across multiple agents, that
+  turns a fixed monthly subscription into a per-token bill that scales with how much you
+  actually use the bots — exactly the wrong incentive for "always-on engineering
+  teammates". Running the Claude Code CLI process instead keeps each agent on the
+  per-account subscription quota. agent-swarm is, deliberately, the smallest wrapper that
+  bypasses the SDK billing model and lets a single Pro / Max plan drive long-lived,
+  MCP-equipped, Matrix-listening bots.
+
+- **`claude -p` (Claude Code print mode)** *is* on subscription quota, but it's
+  single-shot: one prompt in, one response out, then the process exits. Every invocation
+  pays the full cold-start cost — no prompt cache, no warmed conversation, no MCP server
+  handshake, no Matrix channel connection — and there's nowhere to hold the cross-message
+  state that makes the agent feel like a *teammate* rather than a query-and-reply
+  function. Wrapping `-p` to look like a long-lived agent is exactly what agent-swarm
+  would be re-inventing.
+
+- **Open-source CLI alternatives like [opencode](https://github.com/sst/opencode)** are a
+  good fit for interactive single-user work against a self-hosted or third-party LLM, but
+  they don't get you the *Claude account* itself — you bring your own model. If the goal
+  is to use a specific Claude subscription as the backing engine, you need Claude's own
+  CLI to do the auth, quota accounting, and prompt-cache handling.
+
+So agent-swarm sits in a narrow niche: a long-lived **Claude Code** process per agent,
+with the Matrix channel plugin for inputs, `--remote-control` for direct drive-in, MCP
+servers for everything else, and the stub-credential isolation in
+[Security](#security--iron-proxy) so a Claude OAuth token never has to live in a pod.
+
 ---
 
 ## How it works
