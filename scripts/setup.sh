@@ -93,13 +93,22 @@ echo "[setup] wrote Matrix channel config"
 # git / gh auth — GITHUB_TOKEN is already in the environment, so `gh` uses it
 # automatically. `gh auth login` refuses to run while the env var is set, so we
 # only wire `git` to the token for HTTPS clone/push.
+#
+# git HTTPS uses Basic Auth (base64-encoded credentials) which iron-proxy cannot
+# swap (it matches plain-text stub values). GIT_GITHUB_TOKEN carries the real
+# token specifically for .git-credentials so git clone/pull/push work. The main
+# container keeps GITHUB_TOKEN=proxy-token-github so gh/API calls still go
+# through iron-proxy's swap. The CA cert is wired into git config so iron-proxy's
+# MITM certs are trusted in the main container (which skips update-ca-certificates).
+_GIT_TOKEN="${GIT_GITHUB_TOKEN:-${GITHUB_TOKEN}}"
 git config --global user.name  "${AGENT_NAME}"
 git config --global user.email "${AGENT_NAME}@lab.sherodtaylor.dev"
-if [ -n "${GITHUB_TOKEN:-}" ]; then
+git config --global http.sslCAInfo "${HOME}/iron-proxy.crt"
+if [ -n "${_GIT_TOKEN:-}" ]; then
   git config --global credential.helper store
-  printf 'https://x-access-token:%s@github.com\n' "${GITHUB_TOKEN}" > "${HOME}/.git-credentials"
+  printf 'https://x-access-token:%s@github.com\n' "${_GIT_TOKEN}" > "${HOME}/.git-credentials"
   chmod 600 "${HOME}/.git-credentials"
-  echo "[setup] git credentials configured (gh uses GITHUB_TOKEN from env)"
+  echo "[setup] git credentials configured (GIT_GITHUB_TOKEN for clone/push, GITHUB_TOKEN for gh API)"
 fi
 
 # Clone working repos
