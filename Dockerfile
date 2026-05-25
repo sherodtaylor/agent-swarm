@@ -54,6 +54,6 @@ WORKDIR /opt/agent-smith
 COPY agents/   ./agents/
 COPY scripts/  ./scripts/
 RUN chmod +x scripts/setup.sh scripts/entrypoint.sh \
-              scripts/claude-loop.sh scripts/rc-loop.sh scripts/keepalive-loop.sh
+              scripts/claude-loop.sh scripts/keepalive-loop.sh
 
 CMD ["/opt/agent-smith/scripts/entrypoint.sh"]

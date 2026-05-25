@@ -70,7 +70,7 @@ chmod +x "${MOCK_BIN}/claude"
 echo "--- Test 1: credential restoration on restart ---"
 rm -f "${MOCK_HOME}/.claude/.runcount" "${MOCK_HOME}/.claude/.restore_log"
 
-CREDS_SRC="$CREDS_SRC" HOME="$MOCK_HOME" PATH="${MOCK_BIN}:${PATH}" \
+AGENT_NAME=devbot CREDS_SRC="$CREDS_SRC" HOME="$MOCK_HOME" PATH="${MOCK_BIN}:${PATH}" \
   timeout 15 bash "${SCRIPT_DIR}/../scripts/claude-loop.sh" 2>/dev/null || true
 
 # Every entry in the restore log should be 'max' (creds restored before each run)
@@ -94,7 +94,7 @@ fi
 # ── Test 2: claude-loop.sh exits 1 when creds template is missing ──
 echo "--- Test 2: exit 1 on missing credentials template ---"
 EXIT_CODE=0
-CREDS_SRC="/nonexistent/path" HOME="$MOCK_HOME" PATH="${MOCK_BIN}:${PATH}" \
+AGENT_NAME=devbot CREDS_SRC="/nonexistent/path" HOME="$MOCK_HOME" PATH="${MOCK_BIN}:${PATH}" \
   bash "${SCRIPT_DIR}/../scripts/claude-loop.sh" 2>/dev/null || EXIT_CODE=$?
 if [ "$EXIT_CODE" -eq 1 ]; then
   pass "claude-loop.sh exits 1 when credentials template is missing"
@@ -102,55 +102,14 @@ else
   fail "claude-loop.sh expected exit 1, got exit ${EXIT_CODE}"
 fi
 
-# ── Test 3: rc-loop.sh exits 1 when creds template is missing ──
-echo "--- Test 3: rc-loop.sh exits 1 on missing credentials template ---"
-EXIT_CODE=0
-CREDS_SRC="/nonexistent/path" HOME="$MOCK_HOME" PATH="${MOCK_BIN}:${PATH}" \
-  bash "${SCRIPT_DIR}/../scripts/rc-loop.sh" 2>/dev/null || EXIT_CODE=$?
-if [ "$EXIT_CODE" -eq 1 ]; then
-  pass "rc-loop.sh exits 1 when credentials template is missing"
-else
-  fail "rc-loop.sh expected exit 1, got exit ${EXIT_CODE}"
-fi
-
-# ── Test 4: keepalive-loop.sh exits 0 when prompts file is absent ──
-echo "--- Test 4: keepalive exits 0 when prompts file absent ---"
+# ── Test 3: keepalive-loop.sh exits 0 when prompts file is absent ──
+echo "--- Test 3: keepalive exits 0 when prompts file absent ---"
 EXIT_CODE=0
 AGENT_NAME="devbot" bash "${SCRIPT_DIR}/../scripts/keepalive-loop.sh" 2>/dev/null || EXIT_CODE=$?
 if [ "$EXIT_CODE" -eq 0 ]; then
   pass "keepalive-loop.sh exits 0 when prompts file is absent"
 else
   fail "keepalive-loop.sh expected exit 0, got exit ${EXIT_CODE}"
-fi
-
-# ── Test 5: rc-loop.sh writes credentials to /root/rc-home ──
-echo "--- Test 5: rc-loop.sh credential destination ---"
-if [ -w "/root" ] || [ -w "/root/rc-home" ] 2>/dev/null; then
-  mkdir -p /root/rc-home/.claude
-  rm -f /root/rc-home/.claude/.credentials.json
-
-  # Run rc-loop.sh briefly (it will try to start claude and fail immediately)
-  CREDS_SRC="$CREDS_SRC" PATH="${MOCK_BIN}:${PATH}" \
-    timeout 5 bash "${SCRIPT_DIR}/../scripts/rc-loop.sh" 2>/dev/null || true
-
-  # The loop should have copied credentials before trying to run claude
-  if [ -f "/root/rc-home/.claude/.credentials.json" ]; then
-    SUBTYPE=$(python3 -c "
-import json
-with open('/root/rc-home/.claude/.credentials.json') as f:
-    d = json.load(f)
-print(d['claudeAiOauth']['subscriptionType'])
-" 2>/dev/null || echo "error")
-    if [ "$SUBTYPE" = "max" ]; then
-      pass "rc-loop.sh writes credentials with subscriptionType='max' to /root/rc-home"
-    else
-      fail "rc-loop.sh wrote credentials but subscriptionType='${SUBTYPE}' not 'max'"
-    fi
-  else
-    fail "rc-loop.sh did not write credentials to /root/rc-home/.claude/.credentials.json"
-  fi
-else
-  echo "SKIP: Test 5 requires write access to /root — skipping in non-root environment"
 fi
 
 # ── Summary ──
