@@ -25,11 +25,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Compute tags + OCI labels. Rules:
-      #   push to main  -> :main, :sha-<short>
-      #   tag vX.Y.Z    -> :vX.Y.Z, :vX.Y, :vX, :latest
-      # Versioned tags are the contract for consumers; :main is the floating
-      # dev channel. :latest only moves on a vX.Y.Z release, never on main.
+      # push to main  -> :main, :sha-<short>
+      # tag vX.Y.Z    -> :vX.Y.Z, :vX.Y, :vX, :latest
+      # :latest only moves on a vX.Y.Z release, never on main.
       - name: Compute image tags
         id: meta
         uses: docker/metadata-action@v5
@@ -57,3 +55,55 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  chart:
+    name: Package + publish Helm chart
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.16.4
+
+      - name: Derive chart version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Lint chart
+        run: |
+          helm lint charts/agent-swarm \
+            --set agentName=ci \
+            --set matrix.homeserverUrl=https://x \
+            --set matrix.botUserId=@y:x \
+            --set existingSecret=z
+
+      - name: Package chart
+        run: |
+          mkdir -p dist
+          helm package charts/agent-swarm \
+            --version "${{ steps.version.outputs.version }}" \
+            --app-version "${{ steps.version.outputs.version }}" \
+            --destination dist/
+
+      - name: Log in to GHCR for Helm
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" \
+            | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Push chart to GHCR OCI
+        run: |
+          helm push "dist/agent-swarm-${{ steps.version.outputs.version }}.tgz" \
+            oci://ghcr.io/sherodtaylor/charts
+
+      - name: Attach chart to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/agent-swarm-*.tgz
+          fail_on_unmatched_files: true
