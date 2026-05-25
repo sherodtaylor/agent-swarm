@@ -12,8 +12,22 @@ echo "[entrypoint] agent=${AGENT_NAME} workdir=${WORKDIR}"
 # is required because the plugin is not on the official channel allowlist.
 # --remote-control on the same instance exposes this claude for remote drive-in
 # under a session name matching the agent (e.g. "infrabot").
+#
+# Resume across pod restarts: ~/.claude is on a PVC, so prior session transcripts
+# survive. Pass --continue when a session exists for this cwd; on a fresh pod the
+# directory is empty and we start clean.
+SESSION_DIR="${HOME}/.claude/projects/-workspace-${PRIMARY_REPO}"
+RESUME_FLAGS=()
+if [ -d "$SESSION_DIR" ] && [ -n "$(ls -A "$SESSION_DIR" 2>/dev/null)" ]; then
+  RESUME_FLAGS=(--continue)
+  echo "[entrypoint] resuming prior session from ${SESSION_DIR}"
+else
+  echo "[entrypoint] no prior session in ${SESSION_DIR} — starting fresh"
+fi
+
 CLAUDE_CMD=(
   claude
+  "${RESUME_FLAGS[@]}"
   --dangerously-load-development-channels plugin:matrix@claude-code-channel-matrix
   --remote-control "${AGENT_NAME}"
   --permission-mode bypassPermissions
