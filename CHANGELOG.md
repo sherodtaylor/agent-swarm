@@ -57,6 +57,13 @@ this section into the new version section._
   agents now call the plugin's `reply` tool with the correct argument shape
   derived from the plugin source — reasoning routed to thread, plan/result to
   the room, user-input prompts to native reply.
+- **Self-healing OAuth token persistence** ([#34](https://github.com/sherodtaylor/agent-smith/pull/34)):
+  `claude-loop.sh` no longer overwrites real tokens with the stub on restart.
+  After a successful OAuth refresh, the real access/refresh tokens are merged
+  into the template (preserving `subscriptionType`/`rateLimitTier`) and carried
+  forward. iron-proxy's existing `require:false` config passes them through
+  transparently. This eliminates the recurring 401 cycle caused by iron-proxy
+  holding a stale env-var token after the pod's built-in refresh cycle ran.
 
 ### Changed
 
@@ -172,7 +179,8 @@ this section into the new version section._
 
 ---
 
-[Unreleased]: https://github.com/sherodtaylor/agent-smith/compare/v0.1.15...HEAD
+[Unreleased]: https://github.com/sherodtaylor/agent-smith/compare/v0.1.16...HEAD
+[0.1.16]: https://github.com/sherodtaylor/agent-smith/compare/v0.1.15...v0.1.16
 [0.1.15]: https://github.com/sherodtaylor/agent-smith/compare/v0.1.14...v0.1.15
 [0.1.14]: https://github.com/sherodtaylor/agent-smith/compare/v0.1.13...v0.1.14
 [0.1.13]: https://github.com/sherodtaylor/agent-smith/compare/v0.1.0...v0.1.13
