@@ -29,38 +29,65 @@ This last point is the gotcha that broke the bots between v0.1.13 and v0.1.15:
 the narration rules said "post in the room" but never specified the mechanism,
 so agents generated text into the terminal and the rooms stayed silent.
 
-## The three reply destinations
+## Available tools
 
-The Matrix plugin's `reply` tool can route a message to one of three places
-depending on which parameters are set alongside `room_id`. The exact parameter
-names are defined by the plugin's runtime schema — check the schema on startup
-rather than hard-coding names.
+The plugin exposes two MCP tools to Claude:
 
-| Destination          | When to use it                                                            | Visibility                                                                          |
-| -------------------- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| **Main room**        | Plan, final result, verification command                                  | Visible to anyone in the room without opening a thread                              |
-| **Thread**           | Task progress, reasoning, intermediate findings, "still working" notes    | Visible only when someone clicks into the thread off the original message           |
-| **Native reply**     | A question, confirmation, or choice that requires the sender to act       | Triggers a notification for the original sender; thread-only posts do not           |
+### `reply`
 
-The `event_id` from the inbound `<channel>` tag is the anchor for both
-threading and native replies. Same ID, different roles in the tool call.
+```
+room_id  string  required  — from the <channel> tag
+text     string  required  — plain text body
+html     string  optional  — HTML-formatted body (org.matrix.custom.html)
+```
 
-## Why split the cadence
+Sends a message to the room. If the server has a **thread configured** for this
+room (see "Threading" below), the message is automatically posted into that
+thread. Claude has no parameter to choose between "main room" and "thread" — the
+routing is transparent and server-controlled.
 
-The room/thread split is the difference between a usable channel and one that
-nobody reads. The main room is a feed of **what was asked and what got done**.
-The thread is the **debugging trace** — anyone who wants to know *how* the
-agent got there opens the thread and follows the reasoning step by step.
+### `react`
 
-If everything piles into the main room you get the v0.1.14 problem: a wall of
-"1/3 done", "still working: linting", "kustomize passes" updates between every
-real outcome. The room becomes useless for catching up cold, and Sherod has to
-scroll through ten messages to find the one verification command he actually
-needs.
+```
+room_id   string  required  — from the <channel> tag
+event_id  string  required  — from the <channel> tag (the message to react to)
+emoji     string  required
+```
 
-The native-reply destination exists for a separate reason: **notifications**.
-Threaded messages do not page Sherod's phone; a native reply does. Use it
-sparingly — only when the agent is genuinely blocked on user input.
+Adds an emoji reaction to a specific message event.
+
+## Threading
+
+The plugin maintains a `threadRootByRoom` map: one thread root event ID per room,
+established at startup via `ensureThreadRoot()` or loaded from `threads.json`.
+When a thread root exists for a room:
+
+- All bot `reply` calls in that room are posted inside the thread (the plugin
+  injects `m.relates_to: { rel_type: "m.thread", event_id: <root> }` automatically)
+- Only messages already in that thread are delivered to Claude; main-room messages
+  are filtered out
+
+When no thread root is configured, `reply` posts to the main room directly.
+
+**Claude has no per-call control over threading.** There is no thread-root or
+reply-to parameter in the `reply` tool. The routing decision is baked into the
+server config at startup.
+
+## Current limitations
+
+- **No selective thread routing** — Claude cannot post "this message to main room,
+  that message to thread" within the same room. It's all-or-nothing per room.
+- **No native reply capability** — `reply` does not accept a `reply_to` or
+  `in_reply_to` parameter. A native Matrix reply (which triggers a notification
+  for the sender) is not currently possible via this tool.
+- **No per-message reaction** — `react` reacts to `event_id`, which must come
+  from the inbound `<channel>` tag. Claude cannot react to its own outbound
+  messages (no event ID is returned by `reply`).
+
+These limitations are in the plugin's current implementation
+([`zekker6/claude-code-channel-matrix`](https://github.com/zekker6/claude-code-channel-matrix)).
+A plugin PR adding `thread_root_id` and `reply_to` parameters to `reply` would
+unlock the full room/thread/notification routing model.
 
 ## Configuration touch points
 
@@ -81,12 +108,10 @@ After modifying the agent CLAUDE.md or the plugin config, tag the bot:
 
 You should observe, in this order:
 
-1. 👀 reaction on your message within ~2 s (plugin is alive)
-2. A short plan message in the main room within ~5 s (`reply` to room is working)
-3. If the task has more than one step: a thread appears under your message and
-   the per-step updates land there (thread routing is working)
-4. A final-result message in the main room with a verification command
-   (round-trip complete)
+1. 👀 reaction on your message within ~2 s (plugin is alive and `allowedUsers` matches)
+2. A plan message in the room within ~5 s (the `reply` tool is working)
+3. Progress updates as the task runs (narration rules firing)
+4. A final-result message with a verification command (round-trip complete)
 
 If 1 fires but 2 doesn't, the bot can read but can't write — check the access
 token's room permissions and the agent pod logs:
@@ -95,9 +120,12 @@ token's room permissions and the agent pod logs:
 kubectl logs -n agents <agent>-0 --tail=100 | grep -E 'reply|matrix'
 ```
 
-If 2 fires but 3 doesn't, the plugin schema may not expose threading, or the
-agent CLAUDE.md is out of sync with the current plugin behaviour — degrade to
-"everything in the main room" is acceptable in that case.
+If 2 fires but 3 doesn't, the agent CLAUDE.md narration rules aren't being followed
+or the agent is suppressing progress updates. Check the session logs inside the pod:
+
+```bash
+kubectl exec -n agents <agent>-0 -- tmux capture-pane -pt 0 -S -1000
+```
 
 ## See also
 
