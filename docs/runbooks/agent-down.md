@@ -1,5 +1,11 @@
 # Runbook: Agent is unresponsive
 
+## Reference scripts
+
+```bash
+.claude/references/restart-agent.sh --help
+```
+
 Use when an agent is silent in Matrix, hasn't reacted to a tag in `#dev`, or
 appears to be in a restart loop. Excludes the specific 401 case — for that
 go to [`oauth-401.md`](oauth-401.md) first.

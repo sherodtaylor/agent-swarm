@@ -1,5 +1,13 @@
 # Runbook: Rotate a credential
 
+## Reference scripts
+
+```bash
+.claude/references/force-eso-sync.sh --help
+.claude/references/restart-agent.sh --help
+.claude/references/restart-ironproxy.sh
+```
+
 Use when rotating a Matrix access token, GitHub PAT, Claude OAuth token, or
 the iron-proxy CA. Each credential has a slightly different blast radius and
 restart requirement.
@@ -39,29 +47,20 @@ infisical secrets set --env=prod /agents/<name>/MATRIX_ACCESS_TOKEN \
 ### 2. Force ESO to re-sync
 
 ```bash
-kubectl annotate externalsecret -n agents <name>-secrets \
-  force-sync="$(date +%s)" --overwrite
+.claude/references/force-eso-sync.sh --name <name>-secrets --namespace agents
+# For the iron-proxy token:
+.claude/references/force-eso-sync.sh --name iron-proxy-upstream-secrets --namespace agent-infra
 ```
-
-Wait for the `LastSync` timestamp to update:
-
-```bash
-kubectl get externalsecret -n agents <name>-secrets \
-  -o jsonpath='{.status.refreshTime}'
-```
-
-(For the iron-proxy token, the ExternalSecret lives in `agent-infra` and the
-secret name is `iron-proxy-upstream-secrets`.)
 
 ### 3. Restart the right pod
 
 | Credential type | Restart |
 |---|---|
-| Matrix anything | `kubectl delete pod -n agents <agent>-0` |
-| `GIT_GITHUB_TOKEN` | `kubectl delete pod -n agents <agent>-0` |
-| `IRON_PROXY_CA_CRT` | `kubectl delete pod -n agents <agent>-0` |
-| Claude OAuth (`CLAUDE_CODE_OAUTH_TOKEN`) | `kubectl rollout restart deployment/iron-proxy -n agent-infra` |
-| iron-proxy domain allowlist | `kubectl rollout restart deployment/iron-proxy -n agent-infra` |
+| Matrix anything | `.claude/references/restart-agent.sh --agent <name>` |
+| `GIT_GITHUB_TOKEN` | `.claude/references/restart-agent.sh --agent <name>` |
+| `IRON_PROXY_CA_CRT` | `.claude/references/restart-agent.sh --agent <name>` |
+| Claude OAuth (`CLAUDE_CODE_OAUTH_TOKEN`) | `.claude/references/restart-ironproxy.sh` |
+| iron-proxy domain allowlist | `.claude/references/restart-ironproxy.sh` |
 | `GITHUB_TOKEN` (proxy stub) — there is no reason to rotate this, it's a literal string | n/a |
 
 Wait for the pod(s) to come Ready:

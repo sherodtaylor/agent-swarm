@@ -74,9 +74,22 @@ into their own cluster — not a personal script.
 │   ├── Chart.yaml  README.md  values.yaml
 │   └── templates/  _helpers.tpl  rbac.yaml  serviceaccount.yaml  statefulset.yaml  NOTES.txt
 │
+├── .claude/
+│   └── references/                    # reusable scripts referenced from runbooks
+│       ├── README.md                  # script index
+│       ├── gh-token.sh                # (source) resolve GH_TOKEN from env or gh config
+│       ├── compare-since-tag.sh       # show commits since last release tag
+│       ├── cut-release.sh             # tag + GitHub Release via API
+│       ├── bump-homelab-chart.sh      # bump HelmRelease versions in sherodtaylor/homelab
+│       ├── check-release.sh           # verify image + chart + release all exist
+│       ├── restart-agent.sh           # delete pod + wait for Ready
+│       ├── restart-ironproxy.sh       # rollout restart iron-proxy
+│       ├── force-eso-sync.sh          # force ExternalSecret re-sync from Infisical
+│       └── restore-stub-creds.sh      # restore stub credentials in a running pod
+│
 └── docs/
     ├── architecture.md                # full design detail (when README isn't enough)
-    ├── runbooks/                      # operational playbooks
+    ├── runbooks/                      # operational playbooks (reference scripts above)
     │   ├── README.md                  # runbook index
     │   ├── release.md
     │   ├── adding-agent.md
@@ -100,7 +113,7 @@ descend only when the layer above doesn't answer the question.
 | If you're about to... | Read first | Then if needed |
 |---|---|---|
 | **Understand the project** | [`README.md`](README.md) | [`docs/architecture.md`](docs/architecture.md) |
-| **Cut a release** | [`docs/runbooks/release.md`](docs/runbooks/release.md) | [`CHANGELOG.md`](CHANGELOG.md), `.github/workflows/docker.yml` |
+| **Cut a release** | [`docs/runbooks/release.md`](docs/runbooks/release.md) | [`.claude/references/`](.claude/references/README.md), [`CHANGELOG.md`](CHANGELOG.md) |
 | **Add a new agent persona** | [`docs/runbooks/adding-agent.md`](docs/runbooks/adding-agent.md) | `agents/devbot/CLAUDE.md` as a template |
 | **Debug a 401 from Anthropic** | [`docs/runbooks/oauth-401.md`](docs/runbooks/oauth-401.md) | `scripts/claude-loop.sh`, iron-proxy logs |
 | **Diagnose an unresponsive agent** | [`docs/runbooks/agent-down.md`](docs/runbooks/agent-down.md) | pod logs, tmux attach, `claude-loop.sh` |

@@ -1,5 +1,13 @@
 # Runbook: Anthropic 401 Unauthorized
 
+## Reference scripts
+
+```bash
+.claude/references/restore-stub-creds.sh --help
+.claude/references/restart-agent.sh --help
+.claude/references/restart-ironproxy.sh
+```
+
 Use when an agent's tmux pane shows `401 Unauthorized` from `*.anthropic.com`,
 or `kubectl logs` reports auth errors after a successful pod startup.
 
@@ -56,17 +64,11 @@ this should only stick if Claude is currently running mid-refresh.
 ### 3. Force-restore and restart the agent
 
 ```bash
-kubectl delete pod -n agents <agent>-0
+.claude/references/restart-agent.sh --agent <agent>
 ```
 
 The StatefulSet recreates the pod. `setup.sh` runs (re-copies the stub) and
-`claude-loop.sh` starts fresh. Watch:
-
-```bash
-kubectl logs -n agents <agent>-0 -c setup -f
-# … wait for "[setup] complete" …
-kubectl logs -n agents <agent>-0 -f
-```
+`claude-loop.sh` starts fresh.
 
 You should see `[claude-loop] credentials restored from template` followed by
 a successful Claude Code startup banner.
@@ -86,8 +88,7 @@ If the ExternalSecret's `LastSync` is newer than the iron-proxy pod's start
 time, the pod is running with a stale env value:
 
 ```bash
-kubectl rollout restart deployment/iron-proxy -n agent-infra
-kubectl rollout status  deployment/iron-proxy -n agent-infra
+.claude/references/restart-ironproxy.sh
 ```
 
 ### 5. Verify
