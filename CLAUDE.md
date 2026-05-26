@@ -183,13 +183,11 @@ consuming HelmReleases in `sherodtaylor/homelab`. Full detail:
 
 ## Security model (one-screen view, detail in architecture)
 
-- Agent pods carry **stub** credentials: `proxy-token-github`,
-  `access-token-stub`, `refresh-token-stub`. Literal strings, not real tokens.
+- Agent pods receive real Claude OAuth tokens (`CLAUDE_ACCESS_TOKEN`, `CLAUDE_REFRESH_TOKEN`, `CLAUDE_EXPIRES_AT`) via ESO-backed k8s Secrets. `setup.sh` writes them into `credentials.json` at init so Claude self-refreshes before expiry.
 - **iron-proxy** sits in front of all egress, MITMs HTTPS via a private CA,
   and rewrites `Authorization` headers with real credentials scoped per host.
 - Domain allowlist is default-deny — only listed hosts get egress.
-- Secret rotation is iron-proxy's job, not the pod's. Agents never refresh
-  OAuth — `claude-loop.sh` restores the stub before every `claude` start.
+- Claude token rotation: run `scripts/refresh-claude-creds.sh --local` (or via SSH) on any host with `claude auth login` to push fresh tokens to Infisical. ESO syncs them to pod secrets; pods pick them up on next restart.
 - Stop hook (`check-pr-comments.sh`) and persona rules forbid agents from
   echoing secrets into Matrix.
 
