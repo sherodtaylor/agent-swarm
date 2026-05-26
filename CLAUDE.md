@@ -89,6 +89,7 @@ into their own cluster — not a personal script.
 │
 └── docs/
     ├── architecture.md                # full design detail (when README isn't enough)
+    ├── matrix-communication.md        # how agents send messages to Matrix (room/thread/native reply)
     ├── runbooks/                      # operational playbooks (reference scripts above)
     │   ├── README.md                  # runbook index
     │   ├── release.md
@@ -120,6 +121,7 @@ descend only when the layer above doesn't answer the question.
 | **Investigate a CI failure** | [`docs/runbooks/ci-failure.md`](docs/runbooks/ci-failure.md) | `.github/workflows/docker.yml` |
 | **Rotate a credential** | [`docs/runbooks/secret-rotation.md`](docs/runbooks/secret-rotation.md) | Infisical + ESO refresh policy |
 | **Change agent behaviour** | `agents/_shared/CLAUDE.md` | per-agent `agents/<name>/CLAUDE.md` |
+| **Understand how agents talk to Matrix** | `agents/_shared/CLAUDE.md` ("How Matrix replies work") | [`docs/matrix-communication.md`](docs/matrix-communication.md) |
 | **Change cluster deploy shape** | `charts/agent-smith/values.yaml` | `templates/statefulset.yaml` |
 
 If a runbook is missing or wrong, fix it in the same PR as the code change.
@@ -209,6 +211,7 @@ this file.
 
 - Public-facing overview → [`README.md`](README.md)
 - Architecture detail → [`docs/architecture.md`](docs/architecture.md)
+- Matrix communication mechanism → [`docs/matrix-communication.md`](docs/matrix-communication.md)
 - Operational playbook → [`docs/runbooks/`](docs/runbooks/)
 - Release history → [`CHANGELOG.md`](CHANGELOG.md)
 - Bot runtime behaviour → `agents/_shared/CLAUDE.md` + persona files
