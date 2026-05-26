@@ -22,12 +22,30 @@ if [ -n "${IRON_PROXY_CA_CRT:-}" ]; then
   echo "[setup] installed iron-proxy CA"
 fi
 
-# Write stub OAuth credentials so Claude Code treats this as a real user session.
-# Iron-proxy intercepts all *.anthropic.com requests at the network layer and
-# replaces access-token-stub / refresh-token-stub with the real tokens it holds.
-cp "${APP_DIR}/agents/_shared/.credentials.json" "${CLAUDE_DIR}/.credentials.json"
-chmod 600 "${CLAUDE_DIR}/.credentials.json"
-echo "[setup] wrote stub credentials (iron-proxy injects real tokens at runtime)"
+# Write OAuth credentials. If real tokens are available via env vars (injected by
+# ESO from Infisical), merge them into the stub template so Claude can self-refresh
+# when the access token expires. Falls back to pure stubs when env vars are absent
+# (e.g. first boot before refresh-claude-creds.sh has run), in which case
+# iron-proxy's header swap keeps the agent functional but self-refresh won't work.
+if [ -n "${CLAUDE_ACCESS_TOKEN:-}" ] && [ "${CLAUDE_ACCESS_TOKEN}" != "access-token-stub" ]; then
+  python3 - <<PY
+import json, os
+d = json.load(open('${APP_DIR}/agents/_shared/.credentials.json'))
+o = d['claudeAiOauth']
+o['accessToken']  = os.environ['CLAUDE_ACCESS_TOKEN']
+o['refreshToken'] = os.environ.get('CLAUDE_REFRESH_TOKEN', o['refreshToken'])
+expires = os.environ.get('CLAUDE_EXPIRES_AT', '')
+if expires and expires != 'null':
+    o['expiresAt'] = int(expires)
+json.dump(d, open('${CLAUDE_DIR}/.credentials.json', 'w'))
+PY
+  chmod 600 "${CLAUDE_DIR}/.credentials.json"
+  echo "[setup] wrote real credentials from env (self-refresh enabled)"
+else
+  cp "${APP_DIR}/agents/_shared/.credentials.json" "${CLAUDE_DIR}/.credentials.json"
+  chmod 600 "${CLAUDE_DIR}/.credentials.json"
+  echo "[setup] wrote stub credentials (iron-proxy injects real tokens at runtime)"
+fi
 
 mkdir -p "${CLAUDE_DIR}/agents" "${CLAUDE_DIR}/channels/matrix"
 

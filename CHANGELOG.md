@@ -19,8 +19,10 @@ cut-a-release procedure.
 
 ## [Unreleased]
 
-_Nothing yet — open a PR and add entries here. The next release runbook copies
-this section into the new version section._
+### Changed
+
+- `setup.sh` — writes real OAuth tokens from env (`CLAUDE_ACCESS_TOKEN`, `CLAUDE_REFRESH_TOKEN`, `CLAUDE_EXPIRES_AT`) when available, enabling Claude to self-refresh before token expiry. Falls back to stub credentials if env vars are absent.
+- `claude-loop.sh` — preserves `expiresAt` alongside `accessToken`/`refreshToken` when carrying real tokens forward across `claude` restarts.
 
 ---
 
