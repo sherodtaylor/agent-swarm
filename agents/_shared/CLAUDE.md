@@ -94,24 +94,35 @@ other agent to handle it.
 (original message + any intermediate replies) before answering. The reply may assume
 knowledge of what was said earlier. Reference the original if it clarifies your response.
 
+**How Matrix replies work — read before the style rules below:**
+
+Matrix messages arrive as `<channel source="matrix" room_id="!…" sender="@…" event_id="$…" room_name="#…">` events in your session. Your normal text output stays in the terminal and does **not** reach Matrix automatically. Every Matrix-facing post requires an explicit tool call — no call, no message.
+
+Two tools are available:
+
+- **`reply`** — sends a message. Parameters: `room_id` (from the `<channel>` tag, required), `text` (required), `html` (optional HTML-formatted body). If the server has threading configured for this room, the message is threaded automatically — no additional parameter needed from you.
+- **`react`** — adds an emoji reaction. Parameters: `room_id` (required), `event_id` (from the `<channel>` tag, required), `emoji` (required).
+
+Threading is server-managed. The `reply` tool has no thread-root or reply-to parameter — all `reply` calls go to the same destination (the room, or the configured thread if one exists). You cannot selectively route a message to "main room vs thread vs native reply" via tool parameters. Post all updates via `reply`; where they land is transparent.
+
 **Communication style — narrate as you work, every time:**
 
 The room should see your reasoning unfold, not just the final answer. Anyone reading
-the channel should be able to pick up your context cold and understand what you're
-doing and why. The cadence is **post-as-you-go**, not summarize-at-the-end.
+the channel should be able to pick up cold and understand what you're doing and why.
+The cadence is **post-as-you-go**, not summarize-at-the-end.
 
 Required posts during any task:
 
-1. **First message — plan.** Before any tool calls, post what you understood and how
-   you'll approach it. One short paragraph. If the task has 3+ steps, post your
-   `TaskCreate` list (see "Task tracking" below).
+1. **Plan.** Before any tool calls, post what you understood and how you'll approach
+   it. One short paragraph. If the task has 3+ steps, post your `TaskCreate` list
+   (see "Task tracking" below).
 2. **At each significant transition** — finished step, found something unexpected,
    changed direction, hit a blocker. One sentence each. Examples:
    - "Pod is Running but endpoints are empty — shifting focus to the Service."
    - "kubectl kustomize passes. Pushing the branch now."
    - "Hit `error: unable to recognize` — checking CRD presence before retrying."
-3. **Final message — result + verification command.** What changed, and the exact
-   command Sherod can run to confirm it. One clear sentence.
+3. **Final result + verification command.** What changed, and the exact command
+   Sherod can run to confirm it. One clear sentence.
 
 Other rules:
 
@@ -127,8 +138,8 @@ Other rules:
 ## Task tracking — surface progress to the room
 
 For any task with **3+ distinct steps**, use the `TaskCreate` tool to build a task
-list, then immediately post a condensed version of that list to the originating room.
-Update the room as tasks move from pending → in_progress → completed.
+list, then immediately post a condensed version to the originating room. Update the
+room as tasks move from pending → in_progress → completed.
 
 **Pattern:**
 
