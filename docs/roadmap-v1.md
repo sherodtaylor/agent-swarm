@@ -4,178 +4,203 @@
 **Author:** DevBot (with Sherod)
 **Last updated:** 2026-05-25
 
-A critical pass on the v1 candidate list. Goal: name the items that earn
-their weight, the items that don't yet, and the gaps the original list
-missed. Ordering reflects leverage-per-effort, not arbitrary preference.
+---
+
+## Vision
+
+**agent-smith is an autonomous engineering crew running in a homelab.** Not a
+chatbot, not a code-completion sidecar — a swarm of AI engineers who operate
+as peers, ship production work, coordinate with each other, and learn from
+what they ship. Humans set direction; agents execute, coordinate, recover
+from their own mistakes, and surface what they couldn't.
+
+The shape we're aiming at: Sherod opens Matrix on Monday morning and the
+crew has already triaged the weekend's CI failures, opened three Dependabot
+PRs, fixed the one with a clean bump, asked for a steer on the two that
+weren't, and posted a one-line summary in `#audit`. He doesn't relay
+information between bots; they share state. He doesn't piece together what
+happened from three browser tabs; one timeline shows the whole run. He
+doesn't audit token usage by hand; budgets are enforced at the edge.
+
+Right now agent-smith is a long way from that. It is two bots that
+faithfully complete the tasks they're handed, with no shared memory, no
+unified observability, no capability scoping, and no ability to originate
+work. Every conversation is the first conversation. v1 is about closing
+that gap.
 
 ---
 
-## Ship now (v1 core)
+## What v1 must prove
 
-These three are the foundation. Everything in "Ship soon" assumes them.
+Five promises. Every feature in this roadmap traces back to one of them.
+If a feature can't be tied to a promise, it doesn't belong in v1.
 
-### 1. Agent Memory
-
-"Memory" hides three distinct problems. Don't conflate them.
-
-| Problem | Status today | Action |
+| # | Promise | What it means in practice |
 |---|---|---|
-| Cross-session persistence — a single agent remembering its own past work | Solved — Claude Code's auto-memory at `/root/.claude/projects/<cwd>/memory/MEMORY.md` already handles this; we use it. | Keep using; document the convention in `agents/_shared/CLAUDE.md`. |
-| Cross-agent shared memory — DevBot writes a decision, InfraBot reads it | **Real gap.** Today we rely on `#audit` room scrollback + NATS events, both unstructured. | **Build.** NATS-backed typed KV (records: `decision`, `incident`, `pattern`, `runbook`) + a `memory` MCP server exposing read/write to both bots. |
-| Project KB — long-context retrieval over past PRs, docs, incident reports | Solved by #6 (Native KB) below. | Pair with #6, ship together. |
+| **P1** | **Coordination is real** | DevBot and InfraBot share understanding without Sherod as relay. Decisions, incidents, and patterns are durable and queryable across agents. |
+| **P2** | **Work is observable** | Any past run can be reconstructed end-to-end from a single timeline — Matrix message → tool calls → file edits → NATS events → log lines → outcome. No three-tab archaeology. |
+| **P3** | **Boundaries are enforced** | Each agent has a documented capability scope (what tools, which secrets, which repos). Boundary violations are detected, not just hoped against. |
+| **P4** | **Memory compounds** | Agents recall their own past decisions and each other's. Knowledge accumulates over months; agents don't get repeatedly stuck on the same problem. |
+| **P5** | **Work originates** | Bots don't only respond to pings — they pick up stale PRs, dep bumps, CI rot, and incident triage on their own cadence. The crew has work even when Sherod is asleep. |
 
-**v1 scope:** the middle row. Concretely:
+## What v1 explicitly does NOT promise
 
-- A new NATS stream `agent-smith.memory.v1` with a JSON schema per record type.
-- `mcp-memory` Go binary (sibling of `mcp-nats`) that exposes `write_record`, `read_records(type, agent?, since?)`, `find_records(query)`.
-- Wire into `agents/_shared/mcp.json`.
+Naming these reduces drift. If something on this list becomes urgent later,
+revisit — but don't let it sneak in without justification.
 
-**Effort:** ~1 week. **Leverage:** unblocks coherent multi-agent operation.
-
-### 2. Orchestration Hub for debugging
-
-Today we have three observability tiers that don't talk to each other:
-
-- **NATS** — structured event log, no UI, queried only when explicitly asked.
-- **VictoriaLogs** — every pod's stdout/stderr, full-text searchable, no schema.
-- **Matrix** — semantic context (who asked what, what bot replied), unstructured and per-room.
-
-When something goes wrong (a PR review goes off the rails, an Infra change loops, a tmux pane gets stuck), there is no single pane that joins these on a per-task timeline. Diagnosing requires three tabs and lots of correlation by hand.
-
-**v1 scope:**
-
-- Define a `run_id` UUID generated per Matrix message that wakes an agent. Thread it through every NATS event, every log line (`echo "[run=$RUN_ID] ..."`), and every Matrix reply (footer).
-- Grafana dashboard with three rows: NATS events for run, log lines for run, Matrix messages for run — all filtered by `run_id`.
-- One panel per agent showing the live `run_id` and tmux pane state.
-
-**Effort:** ~3–5 days on existing infra (Grafana + VictoriaLogs/VictoriaMetrics already deployed). **Leverage:** mandatory before ephemeral agents (#7) — debugging an ephemeral with no hub is misery.
-
-### 3. Per-agent capability scopes *(NOT on Sherod's original list)*
-
-Today the Matrix allowlist gates *who* can trigger a bot. Nothing gates *what* the bot can do once triggered. DevBot has the same tools as InfraBot; both can `kubectl apply` if the cluster RBAC allows it.
-
-This is wrong:
-
-- DevBot shouldn't be able to `flux reconcile` or apply manifests.
-- InfraBot shouldn't `gh pr create` or modify code in `sherodtaylor/agent-smith`.
-- Neither should be able to read or write secrets they don't need.
-
-**v1 scope:**
-
-- Per-agent allowed-tools list in `agents/<name>/capabilities.yaml`. Enforced at the tool-call layer (claude settings `permissions.deny`) and at the k8s layer (per-agent ServiceAccount with scoped RBAC, already partially done in the Helm chart).
-- Per-agent `existingSecret` scoping so DevBot doesn't see InfraBot's cluster-admin token, and vice versa.
-- An audit event on every cross-boundary tool call.
-
-**Effort:** 2–3 days. **Leverage:** cheap to add now, painful and risky once both agents have grown into their current permissions.
+- **Model portability.** We are Claude-native. The leverage of CLAUDE.md +
+  MCP + plugin marketplace + the Matrix channel plugin is too high to give
+  up for an abstract "what if we want Hermes" win.
+- **Federation across organizations.** Single operator, single trust
+  boundary. DIDs and decentralized discovery solve problems we don't have.
+- **Universal syscall observability.** iron-proxy controls egress;
+  VictoriaLogs captures stdout/stderr. eBPF only earns its weight if bots
+  ingest untrusted input — they don't today.
 
 ---
 
-## Ship soon (v1.1)
+## Current state vs. the promises
 
-### 4. Native KB integration (#6 in original list)
+Honest gap analysis. Where are we against each promise *right now*?
 
-Define "native" tightly. Three plausible flavours:
-
-1. **Read-only MCP** over a vector DB of past PRs, `#audit` history, and `docs/` markdown. Useful immediately; low coupling.
-2. **Read-write to Obsidian / Notion** as the persistence layer. Appealing because Sherod already uses Obsidian, but adds a sync layer and second source of truth.
-3. **Memory promotion** — move long-lived `memory/` records into the KB on a TTL.
-
-**v1.1 scope:** #1 only. Build the MCP server pointing at a self-hosted vector DB (qdrant or pgvector). Treat Obsidian export as a one-way mirror via a cron-job, not as the live store.
-
-**Effort:** ~1 week. **Leverage:** lets agents recall prior decisions and past PRs without re-reading every time. Pairs with Agent Memory (#1).
-
-### 5. Ephemeral Agents (#7 in original list)
-
-Short-lived, task-scoped bots that spin up for a single PR review / one investigation / one incident, then terminate. K8s `Job`s, not `StatefulSet`s.
-
-**Wins:** no state pollution between runs; horizontal scale; per-run cost accounting.
-
-**Risks worth designing for:**
-
-- **Matrix credential churn.** Each ephemeral needs a login — a session broker that issues short-lived tokens to the Job pod.
-- **No persistent memory.** Has to use the shared `memory` MCP (#1) for everything that should outlive the run.
-- **Debuggability.** Without the orchestration hub (#2) running, you cannot reconstruct what an ephemeral did after it exits.
-
-**v1.1 scope:** one ephemeral agent type — `pr-reviewer`. Triggered by `swarm.events.pr_opened` on NATS, runs the `code-review` skill, posts inline comments, exits. Tightly scoped to prove the pattern.
-
-**Effort:** ~1 week after #1 + #2 + #3 are in. **Strict dep:** ship after the hub.
+| Promise | Current state | Gap |
+|---|---|---|
+| P1 — Coordination | NATS event log exists but is opaque (no UI, queried only on request); `#audit` room is unstructured prose. | No typed shared store, no read-on-startup convention. Agents start every conversation from zero. |
+| P2 — Observability | Three observability tiers: NATS (structured, no UI), VictoriaLogs (text), Matrix (semantic, unstructured). None talk to each other. | No `run_id` correlation. Diagnosing a misbehaving run means correlating by hand. |
+| P3 — Boundaries | Matrix allowlist gates *who* can trigger a bot. Cluster RBAC partially scoped via per-agent ServiceAccounts. | Nothing gates *what* a bot can do once triggered. DevBot can call any tool InfraBot can. No detection of cross-boundary calls. |
+| P4 — Memory | Claude Code's per-project auto-memory works for an individual agent. | No cross-agent memory. No KB. Agents repeatedly re-discover the same context. |
+| P5 — Origination | Zero. Bots are 100% reactive. | No cron, no event triggers beyond Matrix, no concept of "work the crew has noticed and is doing." |
 
 ---
 
-## Defer (need a real use case first)
+## v1 themes and the features that serve them
 
-### 6. Harness-agnostic / multi-model (#1 in original list)
+Themes are the work. Features are how we deliver each theme. Sequencing is at the bottom.
 
-The current value of agent-smith is *tight* Claude integration — `CLAUDE.md` format, MCP, plugin marketplace, Matrix channel plugin, settings.json conventions. Decoupling means rewriting the agent loop, the persona format, the tool layer, and the channel plumbing — and **gives nothing back today** because we have no second-model use case.
+### Theme A — Make the crew coherent (P1 + P4)
 
-The realistic case for multi-model is *sub-agent dispatch*: use a cheap model (Hermes 4 local, Haiku) for classification, embeddings, or low-stakes tool calls. Keep Claude for the main loop.
+The single biggest leverage point. Today every Matrix conversation starts
+from zero because there's nowhere for either agent to look up what they or
+their teammate already decided. Fix this and 50% of "wait, what was the
+context for…" disappears.
 
-**v1 stance:** model adapter at the sub-agent call site only. No harness rewrite. Revisit if a real model-portability requirement appears.
+- **Agent Memory: cross-agent typed KV.** NATS-backed records with strict
+  schemas (`decision`, `incident`, `pattern`, `runbook`). An `mcp-memory`
+  Go binary exposes `write_record`, `read_records(type, agent?, since?)`,
+  `find_records(query)`. Both bots wire it into `agents/_shared/mcp.json`.
+  Solves P1 directly and is the substrate for P4.
+- **Native Knowledge Base (read-only MCP).** Vector DB (qdrant or pgvector)
+  over past PRs, `#audit` history, and `docs/`. The KB is what makes memory
+  *compound* rather than just accumulate — retrieval, not just storage.
+  Ships in v1.1, paired with memory.
 
-### 7. Decentralized agent discovery via DID / central registry (#3 in original list)
+### Theme B — Make every run inspectable (P2)
 
-DIDs solve federation between mutually-distrusting peers. We have two bots, both running in the same homelab, both controlled by one operator. There is no trust boundary to cross.
+Today an off-the-rails run is undebuggable after the fact. This blocks
+ephemeral agents (you can't run short-lived bots if you can't review what
+they did) and erodes trust in the crew over time.
 
-A `team.yaml` file the bot reads at startup (replacing the hard-coded list in `agents/_shared/CLAUDE.md`) is the right v1 answer. Revisit DID/registry only when we have ≥5 agents OR a cross-org collab use case.
+- **Orchestration Hub.** A `run_id` UUID is generated per Matrix message
+  that wakes an agent and threaded through every NATS event, every log line
+  (`echo "[run=$RUN_ID] ..."`), and every Matrix reply (footer). A Grafana
+  dashboard joins NATS + VictoriaLogs + Matrix on `run_id` and surfaces a
+  single timeline. Days of work on existing infra; mandatory prerequisite
+  for Theme D.
 
-**v1 scope:** `team.yaml` only. ~1 hour of work, no new infra.
+### Theme C — Make boundaries real (P3)
 
-### 8. Native eBPF for networking/security monitoring (#5 in original list)
+The current model is "trust both agents fully." It works because there are
+two agents and Sherod operates both. The moment we add ephemeral agents
+(Theme D) or take outside input (eventually), it stops working.
 
-Iron-proxy already controls egress at the network layer. VictoriaLogs captures per-pod stdout/stderr. eBPF would add syscall-level audit (file writes, fork chains, network connects per-process) — genuinely useful *if* bots accept untrusted input.
+- **Per-agent capability scopes.** `agents/<name>/capabilities.yaml`
+  enumerating allowed tools, allowed Matrix rooms, and accessible secret
+  keys. Enforced at three layers: Claude `permissions.deny`, k8s RBAC, and
+  an audit-log event on every boundary check.
+- **Cost / budget controls.** Daily token budget per agent enforced at
+  iron-proxy; hard-kill when exceeded; alert to `#audit`. Becomes critical
+  when Theme D ships — without budgets, a buggy ephemeral job can rack up
+  real money before anyone notices.
 
-Today the only realistic untrusted-input vector is a malicious dotfiles install script (see PR #28 review thread, comments on `setup.command`). Iron-proxy + a tightened README warning is a much cheaper mitigation than an eBPF deployment.
+### Theme D — Make the crew autonomous (P5 + scale via P3)
 
-**v1 stance:** defer until bots take untrusted input from outside Sherod's perimeter.
+The end state of v1. Bots that originate work on their own cadence, scale
+out via short-lived task-scoped runs, and don't need a human to start them.
+Blocked on every prior theme.
+
+- **Ephemeral Agents.** K8s `Job`s (not `StatefulSet`s) triggered by NATS
+  events or cron. First implementation: `pr-reviewer`, wakes on
+  `swarm.events.pr_opened`, runs the `code-review` skill, posts inline
+  comments, exits. Strict dep on Themes A (shared memory because no
+  persistence), B (debuggability), and C (scoped credentials per run).
+- **Proactive work origination.** Start with one concrete loop — weekly
+  stale-PR sweep — and add more once the pattern works. Driven by the
+  existing `schedule` skill. Each new loop is a small lift once the
+  infrastructure is in place.
 
 ---
 
-## Other gaps worth naming
-
-These weren't on the original list but should be on the roadmap.
-
-### 9. Cost / budget controls
-
-No per-agent spend cap today. With ephemeral agents (#5) this becomes critical — a bug in a Job loop could rack up real money.
-
-**v1.1 scope:** daily token budget per agent, enforced at the proxy layer; hard kill when exceeded; alert to `#audit`.
-
-### 10. Proactive work origination
-
-Today bots are 100% reactive (Sherod pings → bot acts). The "always-on swarm" promise implies bots that *originate* work:
-
-- Weekly stale-PR sweep.
-- Daily dep-bump triage (Dependabot review + merge of green PRs).
-- Oncall rotation (which bot is responsible for incident response right now?).
-- Quarterly memory compaction (promote `memory/` to KB, drop stale records).
-
-**v1.x scope:** start with the stale-PR sweep — concrete, bounded, observable. Cron-triggered via the existing `schedule` skill.
-
----
-
-## Suggested sequencing
+## Sequencing
 
 ```
-v1.0  →  #1 Agent Memory
-         #2 Orchestration Hub
-         #3 Capability scopes
-         #7 team.yaml (cheap; drop in alongside)
+v1.0  Themes A (memory only) + B + C — the foundation
+        - Agent Memory (cross-agent typed KV)
+        - Orchestration Hub (run_id correlation + Grafana)
+        - Per-agent capability scopes
+        - team.yaml replaces hardcoded agent list (cheap drop-in)
 
-v1.1  →  #4 Native KB (read-only MCP)
-         #5 Ephemeral pr-reviewer
-         #9 Cost budgets
+v1.1  Theme A complete + Theme D pilot
+        - Native KB (read-only MCP) — pairs with memory
+        - Cost / budget controls
+        - First ephemeral agent: pr-reviewer
 
-v1.2  →  #10 First proactive workflow (stale-PR sweep)
+v1.2  Theme D scaled
+        - First proactive workflow: stale-PR sweep
+        - Second ephemeral agent type (TBD with Sherod)
 
-v2.x  →  Revisit #6 (multi-model) and #7 (DID) only with concrete need
-         Revisit #8 (eBPF) only if untrusted-input vector emerges
+v2.x  Revisit the explicit non-promises only if a concrete use case appears
 ```
 
 ---
 
 ## Open questions for Sherod
 
-1. **Capability scope enforcement layer.** Cluster RBAC + Claude permissions is two layers — do we want a third (the bot itself rejects calls before they hit either)? Three layers is safer but more code to maintain.
-2. **KB substrate.** Qdrant, pgvector, or something else? Qdrant is a separate Helm release; pgvector reuses an existing Postgres if you have one.
-3. **Ephemeral agent egress.** Iron-proxy currently has stable upstream credentials per *agent name*. Ephemerals need a credential per *run*. Is that within iron-proxy's design, or does it need a new component?
-4. **NATS stream retention.** The memory stream (#1) needs different retention from the event log (`swarm.events.*`). Comfortable with a new stream + retention policy, or want to overload the existing one?
+Real decisions where I don't want to commit without you weighing in.
+
+1. **Capability-scope enforcement layers.** Cluster RBAC + Claude
+   `permissions.deny` is already two layers. Do we want a third — the bot
+   itself rejecting calls before they hit either — for defense in depth? Or
+   is two enough?
+2. **KB substrate.** Qdrant (own Helm release) vs. pgvector (reuse existing
+   Postgres). Preference?
+3. **Ephemeral agent egress.** iron-proxy currently issues stable
+   credentials per *agent name*. Ephemerals need a credential per *run*.
+   Does iron-proxy grow a session-broker, or do we sidecar something new?
+4. **NATS stream retention.** The memory stream needs different retention
+   from `swarm.events.*`. Comfortable with a new stream + retention policy,
+   or want to overload an existing one?
+5. **Origination cadence.** How proactive do you actually want the crew?
+   "Bot opens a PR every night if it can find a clean dep bump" is a very
+   different posture from "bot prepares a list of candidate work for
+   Sherod's morning review." This shapes Theme D.
+
+---
+
+## Appendix — items from the original list mapped to themes
+
+For traceability, here's where each of your original v1 candidates landed.
+
+| Original idea | Theme | Verdict |
+|---|---|---|
+| Agent Memory | A | **In v1.0** — biggest leverage item, ships first |
+| Orchestration Hub for debugging | B | **In v1.0** — mandatory prerequisite for ephemerals |
+| Native KB integration | A | **In v1.1** — pairs with memory; read-only MCP first |
+| Ephemeral Agents | D | **In v1.1** — pilot with `pr-reviewer`, then expand |
+| Harness Agnostic (decoupled from Claude) | — | **Deferred** — explicit non-promise; revisit only with a concrete second-model use case |
+| Decentralized agent discovery (DID / registry) | — | **Deferred** — explicit non-promise; `team.yaml` is enough for now |
+| Native eBPF for networking/security | — | **Deferred** — iron-proxy + VictoriaLogs sufficient until bots ingest untrusted input |
+
+**Net adds** (not on original list, surfaced by promise analysis):
+- Per-agent capability scopes (P3)
+- Cost/budget controls (P3 + safety for Theme D)
+- Proactive work origination as a first-class theme (P5)
