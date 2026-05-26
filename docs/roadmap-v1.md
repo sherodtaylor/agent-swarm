@@ -8,40 +8,28 @@
 
 ## Vision
 
-**agent-smith is an autonomous engineering crew running in a production
-sandbox.** Not a chatbot, not a code-completion sidecar — a swarm of AI
-engineers who operate as peers, ship real production work against real
-infrastructure, coordinate with each other, and learn from what they
-ship. Humans set direction; agents execute, coordinate, recover from
-their own mistakes, and surface what they couldn't.
+**agent-smith is an autonomous engineering crew that ships real work
+against real infrastructure.** Not a chatbot, not a code-completion
+sidecar — a swarm of AI engineers who operate as peers, coordinate with
+each other, and learn from what they ship. Humans set direction; agents
+execute, coordinate, recover from their own mistakes, and surface what
+they couldn't.
 
-The framing matters. "Homelab" sounds like a hobby and lowers the bar:
-flaky bots, throwaway PRs, "good enough for me." "Production sandbox"
-sets the right stakes: the cluster is real (k3s on Proxmox, Flux GitOps,
-real monitoring, real secrets via Infisical), the repos are real
-(`homelab/`, `agent-smith/`), the changes get deployed automatically and
-have real blast radius. What makes it a *sandbox* is the boundary — a
-single operator, an isolated network, recoverable state — not the
-quality of the work. The work is production. Every shortcut we take now
-will be a shortcut we have to remove before this pattern can scale
-beyond one operator.
-
-The shape we're aiming at: Sherod opens Matrix on Monday morning and the
-crew has already triaged the weekend's CI failures, opened three
+The shape we're aiming at: the operator opens Matrix on Monday morning
+and the crew has already triaged the weekend's CI failures, opened three
 Dependabot PRs, fixed the one with a clean bump, asked for a steer on
-the two that weren't, and posted a one-line summary in `#audit`. He
-doesn't relay information between bots; they share state. He doesn't
+the two that weren't, and posted a one-line summary in `#audit`. They
+don't relay information between bots; the bots share state. They don't
 piece together what happened from three browser tabs; one timeline shows
-the whole run. He doesn't audit token usage by hand; budgets are
-enforced at the edge. He trusts what the bots changed because he can
-inspect what they did, not because he was watching live.
+the whole run. They don't audit token usage by hand; budgets are
+enforced at the edge. They trust what the bots changed because they can
+inspect what was done, not because they were watching live.
 
 Right now agent-smith is a long way from that. It is two bots that
 faithfully complete the tasks they're handed, with no shared memory, no
 unified observability, no capability scoping, and no ability to
-originate work. Every conversation is the first conversation. v1 is
-about closing that gap — to the bar a production sandbox demands, not
-the bar a hobby project would tolerate.
+originate work. Every conversation is the first conversation. v1 closes
+that gap.
 
 ---
 
