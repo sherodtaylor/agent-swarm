@@ -24,6 +24,26 @@ this section into the new version section._
 
 ---
 
+## [0.1.17] - 2026-05-26
+
+### Added
+
+- **`scripts/attach-agent.sh`** — convenience wrapper to `kubectl exec` into a
+  running agent pod's tmux session. Pane 0 is the claude-loop (use `/login`
+  here to refresh OAuth credentials); pane 1 is a plain shell. Detach with
+  `Ctrl-b d`.
+
+### Fixed
+
+- **Agents no longer hang on "Resume from summary" dialog** — `entrypoint.sh`
+  now auto-accepts the session-resume prompt (selects option 1, "Resume from
+  summary") in both the startup `dispatch()` loop and the ongoing watch loop.
+  Previously, agents with long-running sessions (large token counts) would
+  silently stall after a pod restart, waiting for interactive input that was
+  never sent.
+
+---
+
 ## [0.1.16] - 2026-05-26
 
 ### Added

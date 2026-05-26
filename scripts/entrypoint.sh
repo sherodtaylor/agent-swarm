@@ -27,6 +27,7 @@ dispatch() {
   local theme_done=0
   local bypass_done=0
   local devch_done=0
+  local resume_done=0
   # Each prompt is accepted at most once — claude's rendered prompt text stays
   # on the pane after acceptance, so a non-idempotent matcher would re-fire and
   # send Down+Enter into the next state (which can pick the wrong option).
@@ -51,6 +52,12 @@ dispatch() {
       tmux send-keys -t "$target" Enter
       echo "[entrypoint] $target: auto-accepted development channels prompt"
       devch_done=1
+      quiet=0; sleep 4
+    elif [ "$resume_done" = 0 ] && printf '%s' "$pane" | grep -q "Resuming the full session"; then
+      sleep 2
+      tmux send-keys -t "$target" Enter
+      echo "[entrypoint] $target: auto-accepted session resume (summary)"
+      resume_done=1
       quiet=0; sleep 4
     else
       quiet=$((quiet + 1))
@@ -97,6 +104,9 @@ while tmux has-session -t main 2>/dev/null; do
     tmux send-keys -t main:0.0 Enter
   fi
   if printf '%s' "$capture" | grep -q "I am using this for local development"; then
+    tmux send-keys -t main:0.0 Enter
+  fi
+  if printf '%s' "$capture" | grep -q "Resuming the full session"; then
     tmux send-keys -t main:0.0 Enter
   fi
 
