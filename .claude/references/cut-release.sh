@@ -93,7 +93,7 @@ RELEASE_URL=$(curl -s -X POST \
   "https://api.github.com/repos/${REPO}/releases" \
   -d "{
     \"tag_name\": \"${VERSION}\",
-    \"name\": \"${VERSION}\",
+    \"name\": \"${VERSION} — ${MESSAGE}\",
     \"body\": \"## ${VERSION}\\n\\n${MESSAGE}\\n\\n---\\n_Update CHANGELOG.md body if not yet done._\",
     \"draft\": false,
     \"prerelease\": false
