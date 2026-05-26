@@ -19,6 +19,10 @@ cut-a-release procedure.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`entrypoint.sh` crash when dotfiles set `base-index 1`** — forces `base-index 0` and `pane-base-index 0` before creating the tmux session, so user dotfiles installed via `setup.command` can't shift window indices away from the expected `main:0.0` targets.
+
 ---
 
 ## [0.1.18] - 2026-05-26

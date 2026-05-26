@@ -73,6 +73,12 @@ if ! tmux has-session -t main 2>/dev/null; then
   # Pane 0 (top): the one claude — channels + remote-control.
   # claude-loop.sh restores stub credentials before every start and
   # applies exponential backoff+jitter on crash to prevent tight loops.
+  #
+  # Force base-index 0 before session creation so user dotfiles (which may set
+  # base-index 1) don't cause "can't find window: 0" failures on pane targets.
+  tmux start-server 2>/dev/null || true
+  tmux set-option -g base-index 0
+  tmux set-option -g pane-base-index 0
   tmux new-session -d -s main -x 220 -y 50 -c "${WORKDIR}"
   tmux pipe-pane -t main:0.0 -o 'cat >> /proc/1/fd/1'
   tmux send-keys -t main:0.0 "bash /opt/agent-smith/scripts/claude-loop.sh" Enter
