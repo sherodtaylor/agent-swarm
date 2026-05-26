@@ -19,6 +19,10 @@ cut-a-release procedure.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`entrypoint.sh` pane crash when dotfiles `.zshrc` sources workspace paths** — creates tmux panes with `bash` explicitly instead of the default `$SHELL`. Dotfiles that source `${WORKDIR}/zsh/...` (which don't exist in the agent container) killed the zsh shell before `send-keys` could deliver the claude-loop command.
+
 ---
 
 ## [0.1.20] - 2026-05-26
