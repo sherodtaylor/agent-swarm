@@ -4,12 +4,18 @@
 **Owner:** DevBot
 **Last updated:** 2026-05-26
 
-A public-facing website for the agent-smith project, hosted on GitHub
-Pages, that serves adopters (who might self-host), contributors (who
-might open PRs), and curious onlookers (who want to understand what
-this is) — equally. The site reinforces the production-sandbox posture
-the rest of the repo now carries: bots ship real work against a real
-cluster, this is a framework, not a hobby script.
+A public-facing website for agent-smith — an autonomous engineering
+crew that ships real work against a real Kubernetes cluster — hosted
+on GitHub Pages. Serves adopters (who might self-host), contributors
+(who might open PRs), and curious onlookers (who want to understand
+what this is) — equally.
+
+agent-smith is a framework, not a Matrix-only tool. Matrix is the
+first channel we shipped because the Claude Code channel-plugin
+pattern already had a Matrix implementation; the agent loop itself is
+channel-agnostic, and the site treats it as such (see §6 for the
+out-of-scope cut and the roadmap for the multi-channel pull-forward
+trigger).
 
 ---
 
@@ -46,8 +52,13 @@ Six sections, in order:
    - `$ memory write` — *learns from what it ships*
 4. **Under the hood.** Architecture summary using ASCII-box diagrams,
    not SVGs. Covers: StatefulSet per agent, init container assembling
-   `~/.claude/`, tmux dance, iron-proxy egress credential firewall.
-   Each subsection links to the deeper docs page.
+   `~/.claude/`, tmux dance, iron-proxy egress credential firewall,
+   GitOps via Flux, secrets sourced from Infisical via
+   ExternalSecrets, observability via VictoriaMetrics +
+   VictoriaLogs, per-agent egress capability scope. Each subsection
+   links to the deeper docs page. (Same substrate language the
+   README uses in "The problem this solves" — keep them in sync;
+   the README is the canonical wording.)
 5. **The crew right now.** Build-time current status block (no
    prose; refreshed each deploy, not real-time). Per-agent: name,
    role, last shipped PR, last activity timestamp. Sourced from
@@ -300,9 +311,9 @@ in §3.3 is wired.)
 Drafted now, finalized when implementing:
 
 - "What this is" → "agent-smith runs the Claude Code CLI as a
-  long-lived process in a Kubernetes pod. The interface is a Matrix
-  room. The bots open PRs against real repos and review each other's
-  work."
+  long-lived process in a Kubernetes pod. The human interface is a
+  channel plugin — Matrix today, framework-extensible. The bots open
+  PRs against real repos and review each other's work."
 - "What the crew does" → 4 tiles, each a verb-phrase plus a single
   sentence.
 - "Under the hood" → leans on existing README content (StatefulSet,
