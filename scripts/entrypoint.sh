@@ -74,19 +74,17 @@ if ! tmux has-session -t main 2>/dev/null; then
   # claude-loop.sh restores stub credentials before every start and
   # applies exponential backoff+jitter on crash to prevent tight loops.
   #
-  # Force base-index 0 before session creation so user dotfiles (which may set
-  # base-index 1) don't cause "can't find window: 0" failures on pane targets.
-  tmux start-server 2>/dev/null || true
-  tmux set-option -g base-index 0
-  tmux set-option -g pane-base-index 0
-  tmux new-session -d -s main -x 220 -y 50 -c "${WORKDIR}"
-  tmux pipe-pane -t main:0.0 -o 'cat >> /proc/1/fd/1'
-  tmux send-keys -t main:0.0 "bash /opt/agent-smith/scripts/claude-loop.sh" Enter
-  dispatch main:0.0
+  # Name the window "claude" so pane targets use main:claude.0 / main:claude.1
+  # instead of numeric indices. This survives dotfiles that set base-index 1,
+  # which would shift window 0 to window 1 and break index-based targets.
+  tmux new-session -d -s main -n claude -x 220 -y 50 -c "${WORKDIR}"
+  tmux pipe-pane -t main:claude.0 -o 'cat >> /proc/1/fd/1'
+  tmux send-keys -t main:claude.0 "bash /opt/agent-smith/scripts/claude-loop.sh" Enter
+  dispatch main:claude.0
 
   # Pane 1 (bottom): plain shell, for ad-hoc inspection / commands while attached.
-  tmux split-window -v -t main:0 -c "${WORKDIR}"
-  tmux pipe-pane -t main:0.1 -o 'cat >> /proc/1/fd/1'
+  tmux split-window -v -t main:claude -c "${WORKDIR}"
+  tmux pipe-pane -t main:claude.1 -o 'cat >> /proc/1/fd/1'
 fi
 
 echo "[entrypoint] tmux 'main': pane 0 = claude (channels + remote-control), pane 1 = shell"
@@ -100,30 +98,30 @@ NEXT_PROMPT=$(( $(date +%s) + 3600 + RANDOM % 7200 ))
 while tmux has-session -t main 2>/dev/null; do
   sleep 10
 
-  capture="$(tmux capture-pane -p -t main:0.0 2>/dev/null || true)"
+  capture="$(tmux capture-pane -p -t main:claude.0 2>/dev/null || true)"
   if printf '%s' "$capture" | grep -q "Choose the text style"; then
-    tmux send-keys -t main:0.0 Enter
+    tmux send-keys -t main:claude.0 Enter
   fi
   if printf '%s' "$capture" | grep -qE "Bypass.*Permissions"; then
-    tmux send-keys -t main:0.0 Down
+    tmux send-keys -t main:claude.0 Down
     sleep 0.5
-    tmux send-keys -t main:0.0 Enter
+    tmux send-keys -t main:claude.0 Enter
   fi
   if printf '%s' "$capture" | grep -q "I am using this for local development"; then
-    tmux send-keys -t main:0.0 Enter
+    tmux send-keys -t main:claude.0 Enter
   fi
   if printf '%s' "$capture" | grep -q "Resuming the full session"; then
-    tmux send-keys -t main:0.0 Enter
+    tmux send-keys -t main:claude.0 Enter
   fi
 
   NOW=$(date +%s)
   if [ "$NOW" -ge "$NEXT_PROMPT" ] && [ -f "$PROMPTS_FILE" ]; then
-    SNAP1="$(tmux capture-pane -p -t main:0.0 2>/dev/null || true)"
+    SNAP1="$(tmux capture-pane -p -t main:claude.0 2>/dev/null || true)"
     sleep 30
-    SNAP2="$(tmux capture-pane -p -t main:0.0 2>/dev/null || true)"
+    SNAP2="$(tmux capture-pane -p -t main:claude.0 2>/dev/null || true)"
     if [ "$SNAP1" = "$SNAP2" ]; then
       PROMPT="$(shuf -n 1 "$PROMPTS_FILE")"
-      tmux send-keys -t main:0.0 "$PROMPT" Enter
+      tmux send-keys -t main:claude.0 "$PROMPT" Enter
       echo "[entrypoint] keepalive: injected prompt"
     fi
     NEXT_PROMPT=$(( $(date +%s) + 3600 + RANDOM % 7200 ))

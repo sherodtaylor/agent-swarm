@@ -21,11 +21,19 @@ cut-a-release procedure.
 
 ---
 
+## [0.1.20] - 2026-05-26
+
+### Fixed
+
+- **`entrypoint.sh` crash when dotfiles set `base-index 1`** — names the first tmux window `claude` (`-n claude`) and targets all panes as `main:claude.0` / `main:claude.1` instead of numeric `main:0.0`. User dotfiles that set `base-index 1` no longer cause "can't find window: 0" / "no server running" failures at startup.
+
+---
+
 ## [0.1.19] - 2026-05-26
 
 ### Fixed
 
-- **`entrypoint.sh` crash when dotfiles set `base-index 1`** — forces `base-index 0` and `pane-base-index 0` before creating the tmux session, so user dotfiles installed via `setup.command` can't shift window indices away from the expected `main:0.0` targets.
+- **`entrypoint.sh` crash when dotfiles set `base-index 1`** — attempted to force `base-index 0` via `tmux set-option -g` before session creation. Broken: `set-option` requires a running server and fails with "no server running" before `new-session` is called. Superseded by [0.1.20].
 
 ---
 
@@ -214,7 +222,8 @@ cut-a-release procedure.
 
 ---
 
-[Unreleased]: https://github.com/sherodtaylor/agent-smith/compare/v0.1.19...HEAD
+[Unreleased]: https://github.com/sherodtaylor/agent-smith/compare/v0.1.20...HEAD
+[0.1.20]: https://github.com/sherodtaylor/agent-smith/compare/v0.1.19...v0.1.20
 [0.1.19]: https://github.com/sherodtaylor/agent-smith/compare/v0.1.18...v0.1.19
 [0.1.18]: https://github.com/sherodtaylor/agent-smith/compare/v0.1.17...v0.1.18
 [0.1.17]: https://github.com/sherodtaylor/agent-smith/compare/v0.1.16...v0.1.17
