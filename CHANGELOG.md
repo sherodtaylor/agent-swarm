@@ -19,6 +19,10 @@ cut-a-release procedure.
 
 ## [Unreleased]
 
+---
+
+## [0.1.18] - 2026-05-26
+
 ### Changed
 
 - `setup.sh` — writes real OAuth tokens from env (`CLAUDE_ACCESS_TOKEN`, `CLAUDE_REFRESH_TOKEN`, `CLAUDE_EXPIRES_AT`) when available, enabling Claude to self-refresh before token expiry. Falls back to stub credentials if env vars are absent.
@@ -202,7 +206,9 @@ cut-a-release procedure.
 
 ---
 
-[Unreleased]: https://github.com/sherodtaylor/agent-smith/compare/v0.1.16...HEAD
+[Unreleased]: https://github.com/sherodtaylor/agent-smith/compare/v0.1.18...HEAD
+[0.1.18]: https://github.com/sherodtaylor/agent-smith/compare/v0.1.17...v0.1.18
+[0.1.17]: https://github.com/sherodtaylor/agent-smith/compare/v0.1.16...v0.1.17
 [0.1.16]: https://github.com/sherodtaylor/agent-smith/compare/v0.1.15...v0.1.16
 [0.1.15]: https://github.com/sherodtaylor/agent-smith/compare/v0.1.14...v0.1.15
 [0.1.14]: https://github.com/sherodtaylor/agent-smith/compare/v0.1.13...v0.1.14
