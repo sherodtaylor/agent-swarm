@@ -96,6 +96,62 @@ else
   fail "claude-loop.sh expected exit 1, got exit ${EXIT_CODE}"
 fi
 
+# ── Test 3: real tokens preserved across restarts (post-refresh scenario) ──
+echo "--- Test 3: real token preserved after OAuth refresh ---"
+MOCK_HOME3="${WORKDIR}/home3"
+MOCK_BIN3="${WORKDIR}/bin3"
+mkdir -p "${MOCK_HOME3}/.claude" "$MOCK_BIN3"
+
+cat > "${MOCK_BIN3}/sleep" <<'MOCKEOF'
+#!/usr/bin/env bash
+exit 0
+MOCKEOF
+chmod +x "${MOCK_BIN3}/sleep"
+
+# Pre-seed credentials as if Claude Code just wrote them after a successful OAuth refresh:
+# real access/refresh tokens, but subscriptionType wiped to null (as Anthropic's response does).
+echo '{"claudeAiOauth":{"accessToken":"real-token-post-refresh","refreshToken":"real-refresh-post-refresh","expiresAt":9999999999999,"scopes":[],"subscriptionType":null,"rateLimitTier":null}}' \
+  > "${MOCK_HOME3}/.claude/.credentials.json"
+
+cat > "${MOCK_BIN3}/claude" <<'MOCKEOF'
+#!/usr/bin/env bash
+CREDS="${HOME}/.claude/.credentials.json"
+RUNFILE="${HOME}/.claude/.runcount3"
+COUNT=$(cat "$RUNFILE" 2>/dev/null || echo 0)
+COUNT=$((COUNT + 1))
+echo "$COUNT" > "$RUNFILE"
+python3 - "$CREDS" "${HOME}/.claude/.token_log3" "${HOME}/.claude/.sub_log3" <<'PYEOF'
+import json, sys
+d = json.load(open(sys.argv[1]))
+o = d.get('claudeAiOauth', {})
+open(sys.argv[2], 'a').write(str(o.get('accessToken', 'null')) + '\n')
+open(sys.argv[3], 'a').write(str(o.get('subscriptionType', 'null')) + '\n')
+PYEOF
+if [ "$COUNT" -ge 2 ]; then exit 0; fi
+exit 1
+MOCKEOF
+chmod +x "${MOCK_BIN3}/claude"
+
+AGENT_NAME=devbot CREDS_SRC="$CREDS_SRC" HOME="$MOCK_HOME3" PATH="${MOCK_BIN3}:${PATH}" \
+  timeout 15 bash "${SCRIPT_DIR}/../scripts/claude-loop.sh" 2>/dev/null || true
+
+TOKEN_LOG3="${MOCK_HOME3}/.claude/.token_log3"
+SUB_LOG3="${MOCK_HOME3}/.claude/.sub_log3"
+
+WRONG_TOKENS=$(grep -cv '^real-token-post-refresh$' "$TOKEN_LOG3" 2>/dev/null; true)
+if [ "${WRONG_TOKENS:-1}" = "0" ]; then
+  pass "real token preserved across all restarts ($(wc -l < "$TOKEN_LOG3") run(s))"
+else
+  fail "real token was not preserved — token_log3: $(cat "$TOKEN_LOG3" 2>/dev/null)"
+fi
+
+BAD_SUB=$(grep -cv '^max$' "$SUB_LOG3" 2>/dev/null; true)
+if [ "${BAD_SUB:-1}" = "0" ]; then
+  pass "subscriptionType was 'max' at every invocation despite post-refresh null"
+else
+  fail "subscriptionType was not always 'max' — sub_log3: $(cat "$SUB_LOG3" 2>/dev/null)"
+fi
+
 # ── Summary ──
 echo ""
 echo "Results: ${PASS} passed, ${FAIL} failed"
