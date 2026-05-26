@@ -24,17 +24,27 @@ this section into the new version section._
 
 ---
 
-## [0.1.15] - 2026-05-25
+## [0.1.16] - 2026-05-26
 
 ### Added
 
-- **`setup.command` Helm value** — runs an arbitrary init hook in the setup
-  container before the agent starts. Primary use case: dotfiles bootstrap,
-  custom environment initialization. See `charts/agent-smith/values.yaml` for
-  the example. ([#28](https://github.com/sherodtaylor/agent-smith/pull/28))
+- **Agent runbooks + architecture docs** ([#30](https://github.com/sherodtaylor/agent-smith/pull/30)):
+  `docs/architecture.md` (system overview, control + data planes), seven
+  runbooks under `docs/runbooks/` (cut-a-release, agent-down, adding-agent,
+  ci-failure, oauth-401, secret-rotation), root `CLAUDE.md` for the
+  progressive-disclosure entry point, and ten reference scripts under
+  `.claude/references/` (release cutting, homelab chart bumping, agent
+  restart, ESO force-sync, ironproxy restart, stub-cred restore, since-tag
+  compare).
 - **TaskCreate-to-room surfacing** — agents must post their task list to the
   originating Matrix room for any task with 3+ distinct steps, then update as
   each step completes. ([#29](https://github.com/sherodtaylor/agent-smith/pull/29))
+- **v1 roadmap** ([#32](https://github.com/sherodtaylor/agent-smith/pull/32)):
+  `docs/roadmap-v1.md` enumerates the five promises v1 must prove (release,
+  fleet management, observability, recovery, contribution) and parks larger
+  ideas — multi-channel (Slack/Discord/IRC/WhatsApp), harness-agnosticism,
+  agent memory, DID-based discovery, eBPF monitoring, KB integration,
+  ephemeral agents — as triggered future considerations rather than promises.
 
 ### Fixed
 
@@ -43,14 +53,33 @@ this section into the new version section._
   (`[devbot 💕](https://matrix.to/#/@devbot:lab.sherodtaylor.dev)`), in
   addition to plain text and full Matrix IDs. Previously, plain-text matchers
   missed mentions from web/mobile clients. ([#29](https://github.com/sherodtaylor/agent-smith/pull/29))
+- **Matrix `reply` tool parameters** ([#31](https://github.com/sherodtaylor/agent-smith/pull/31)):
+  agents now call the plugin's `reply` tool with the correct argument shape
+  derived from the plugin source — reasoning routed to thread, plan/result to
+  the room, user-input prompts to native reply.
 
 ### Changed
 
 - **Mandatory narration pattern** — base agent rules now require a 3-step
   cadence: opening plan → one-line transition per significant step → final
-  result with verification command.
+  result with verification command. ([#29](https://github.com/sherodtaylor/agent-smith/pull/29))
 - **Cross-agent acknowledgment** — when a teammate mentions you in any room,
-  acknowledge in the same thread within one message.
+  acknowledge in the same thread within one message. ([#29](https://github.com/sherodtaylor/agent-smith/pull/29))
+- **Public posture in README** ([#32](https://github.com/sherodtaylor/agent-smith/pull/32)):
+  README leads with the production-crew framing the project has earned;
+  meta-arguments about positioning removed in favour of letting the substance
+  read for itself.
+
+---
+
+## [0.1.15] - 2026-05-25
+
+### Added
+
+- **`setup.command` Helm value** — runs an arbitrary init hook in the setup
+  container before the agent starts. Primary use case: dotfiles bootstrap,
+  custom environment initialization. See `charts/agent-smith/values.yaml` for
+  the example. ([#28](https://github.com/sherodtaylor/agent-smith/pull/28))
 
 ---
 
