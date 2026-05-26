@@ -75,6 +75,21 @@ beyond v1. Each has a clear trigger that would pull it forward.
   forward when:** bots take untrusted input, OR an incident shows
   application-layer logs were not enough to reconstruct what
   happened.
+- **Additional human-interface channels (Slack, Discord, IRC,
+  WhatsApp, …).** We're building a framework, not a Matrix-only tool.
+  Matrix happens to be the channel we shipped first because the
+  Claude Code channel-plugin pattern already had a Matrix
+  implementation, but the agent loop itself is channel-agnostic:
+  CLAUDE.md persona, MCP tooling, the `dispatch` event surface, the
+  capability scopes (P3), and the run-id correlation (P2) all apply
+  unchanged regardless of where the human message enters. A second
+  channel proves the abstraction. **Pull forward when:** a user (or
+  the framework's adopter) needs a non-Matrix channel, OR a second
+  channel plugin lands in the Claude Code marketplace that we can
+  wire in without writing one ourselves. **Likely first add:** Slack
+  — most-requested in similar tools, has a mature plugin ecosystem,
+  and the per-channel allowlist model maps cleanly to Slack workspace
+  channels.
 
 ---
 
