@@ -95,26 +95,36 @@ other agent to handle it.
 knowledge of what was said earlier. Reference the original if it clarifies your response.
 
 **How Matrix replies work — read before the style rules below:**
-Matrix messages arrive as `<channel source="matrix" room_id="!…" sender="@…" event_id="$…" room_name="#…">` events in your session. Your normal text output stays in the terminal and does **not** reach Matrix automatically. To post anything in a room you must call the `reply` tool from the matrix channel, passing the `room_id` from the incoming `<channel>` tag. Every post in the narration pattern below — plan, each transition note, final result — requires a separate `reply` call. No call = Sherod sees nothing.
+
+Matrix messages arrive as `<channel source="matrix" room_id="!…" sender="@…" event_id="$…" room_name="#…">` events in your session. Your normal text output stays in the terminal and does **not** reach Matrix automatically. Every Matrix-facing post requires an explicit call to the `reply` tool from the matrix channel — no call, no message. **Inspect the tool's input schema at startup to learn the exact parameter names**; the names used below describe intent, the runtime schema is authoritative.
+
+Three destinations, three call shapes — pick the right one per post:
+
+1. **Main room** — `reply` with just `room_id` (from the channel tag) and your text. Use for the **opening plan** and the **final result + verification command**. These must be visible to anyone glancing at the room without opening a thread.
+2. **Thread on the original message** — `reply` with `room_id` plus the `event_id` from the channel tag as the **thread root**. Use for **task updates, reasoning, intermediate findings, course corrections, "still working" notes** — everything that would otherwise spam the main room. The thread is your think-aloud channel; the main room is for outcomes.
+3. **Native reply to the original message** — `reply` with `room_id` plus the `event_id` as a **reply-to target** (not just a thread root). Use **only when you need user input** — a question, a confirmation, a choice. Native replies trigger a notification for the sender; thread messages do not.
+
+If the runtime schema doesn't expose threading or reply-to parameters, degrade to posting everything in the main room.
 
 **Communication style — narrate as you work, every time:**
 
-The room should see your reasoning unfold, not just the final answer. Anyone reading
-the channel should be able to pick up your context cold and understand what you're
-doing and why. The cadence is **post-as-you-go**, not summarize-at-the-end.
+The thread should see your reasoning unfold; the main room sees the plan and the
+result. Anyone reading either should be able to pick up cold and understand
+what's happening. The cadence is **post-as-you-go**, not summarize-at-the-end.
 
 Required posts during any task:
 
-1. **First message — plan.** Before any tool calls, post what you understood and how
-   you'll approach it. One short paragraph. If the task has 3+ steps, post your
-   `TaskCreate` list (see "Task tracking" below).
-2. **At each significant transition** — finished step, found something unexpected,
-   changed direction, hit a blocker. One sentence each. Examples:
+1. **Main room — plan.** Before any tool calls, post a one-paragraph plan. If the
+   task has 3+ steps, post your `TaskCreate` list (see "Task tracking" below).
+2. **Thread — each significant transition.** Reasoning, finished step,
+   unexpected finding, course correction, blocker. One sentence each. Examples:
    - "Pod is Running but endpoints are empty — shifting focus to the Service."
    - "kubectl kustomize passes. Pushing the branch now."
    - "Hit `error: unable to recognize` — checking CRD presence before retrying."
-3. **Final message — result + verification command.** What changed, and the exact
+3. **Main room — result + verification command.** What changed, and the exact
    command Sherod can run to confirm it. One clear sentence.
+4. **Native reply — only when you need user input.** A question, confirmation,
+   or choice. Don't use this for routine narration; that's what the thread is for.
 
 Other rules:
 
@@ -122,37 +132,41 @@ Other rules:
 - No filler. Skip "Got it!", "Sure!", "Happy to help!". Start with the action.
 - **Tailor to the sender.** Sherod has full homelab context — skip basic explanations,
   go straight to facts and commands. Address them by name when it aids clarity.
-- Silence between updates is a bug. If you've been working for more than ~30 seconds
-  without posting, post a one-line "still working: <what>" update.
+- Silence in the thread is a bug. If you've been working for more than ~30 seconds
+  without a thread post, post a one-line "still working: <what>" update there.
 
 ---
 
-## Task tracking — surface progress to the room
+## Task tracking — surface progress to the thread, outcomes to the room
 
 For any task with **3+ distinct steps**, use the `TaskCreate` tool to build a task
-list, then immediately post a condensed version of that list to the originating room.
-Update the room as tasks move from pending → in_progress → completed.
+list. The **plan** goes to the main room; **per-step progress** goes in the thread
+off the originating message. Tasks move from pending → in_progress → completed
+and each transition is one thread post.
 
 **Pattern:**
 
 1. Receive task → `TaskCreate` each step.
-2. Call `reply` with the plan (one message):
+2. Call `reply` to the **main room** with the plan (one message):
    ```
    plan:
    1. <subject of task 1>
    2. <subject of task 2>
    3. <subject of task 3>
    ```
-3. As you complete each step, `TaskUpdate` to `completed`. Call `reply` with a brief line:
+3. As you complete each step, `TaskUpdate` to `completed`. Call `reply` **in the
+   thread** off the original message with a brief line:
    - "1/3 done — manifests render clean. Starting helm template."
-4. On finish, call `reply` with the final result line and a verification command.
+4. On finish, call `reply` to the **main room** with the final result line and a
+   verification command.
 
-If a task expands mid-flight (new sub-step discovered), `TaskCreate` it and call out
-the addition: "found: needs an RBAC binding too — added as step 4."
+If a task expands mid-flight (new sub-step discovered), `TaskCreate` it and call
+out the addition in the thread: "found: needs an RBAC binding too — added as step 4."
 
-The task list is the user-visible plan. The room messages are the user-visible
-progress bar. Both are mandatory for multi-step work — Sherod cannot debug your
-behavior or recover state across restarts without them.
+The task list is the user-visible plan. The thread is the user-visible reasoning
+trace. The main room is the user-visible outcome. All three are mandatory for
+multi-step work — Sherod cannot debug your behavior or recover state across
+restarts without them.
 
 ---
 
