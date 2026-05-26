@@ -16,9 +16,31 @@ fi
 echo "[claude-loop] starting (agent=${AGENT_NAME})"
 
 while true; do
-  cp "$CREDS_SRC" "$CREDS_DST"
+  # Preserve real tokens written by Claude Code after an OAuth refresh cycle.
+  # iron-proxy is configured with require:false — real tokens pass through
+  # without swapping, so we only need to restore subscriptionType/rateLimitTier
+  # from the template while carrying the real accessToken and refreshToken forward.
+  _existing=""
+  _refresh=""
+  if [ -f "$CREDS_DST" ]; then
+    _existing=$(python3 -c "import json; d=json.load(open('$CREDS_DST')); print(d.get('claudeAiOauth',{}).get('accessToken',''))" 2>/dev/null || true)
+    _refresh=$(python3 -c "import json; d=json.load(open('$CREDS_DST')); print(d.get('claudeAiOauth',{}).get('refreshToken',''))" 2>/dev/null || true)
+  fi
+  if [ -n "$_existing" ] && [ "$_existing" != "access-token-stub" ]; then
+    CREDS_TOKEN="$_existing" CREDS_REFRESH="${_refresh:-refresh-token-stub}" \
+      python3 -c "
+import json, os
+d = json.load(open('$CREDS_SRC'))
+d['claudeAiOauth']['accessToken'] = os.environ['CREDS_TOKEN']
+d['claudeAiOauth']['refreshToken'] = os.environ['CREDS_REFRESH']
+open('$CREDS_DST', 'w').write(json.dumps(d))
+"
+    echo "[claude-loop] credentials refreshed (real tokens preserved from prior refresh)"
+  else
+    cp "$CREDS_SRC" "$CREDS_DST"
+    echo "[claude-loop] credentials restored from template"
+  fi
   chmod 600 "$CREDS_DST"
-  echo "[claude-loop] credentials restored from template"
 
   RESUME_FLAGS=()
   if [ -d "$SESSION_DIR" ] && [ -n "$(ls -A "$SESSION_DIR" 2>/dev/null)" ]; then
