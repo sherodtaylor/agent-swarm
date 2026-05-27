@@ -14,7 +14,7 @@
   "dependencies": {
     "@astrojs/mdx": "^5.0.6",
     "@astrojs/sitemap": "^3.7.3",
-    "@astrojs/starlight": "^0.39.2",
+    "@astrojs/starlight": "0.37.7",
     "@fontsource/jetbrains-mono": "^5.2.8",
     "@lottiefiles/lottie-player": "^2.0.12",
     "astro": "^5"
