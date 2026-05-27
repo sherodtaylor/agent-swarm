@@ -12,7 +12,8 @@
     "check": "astro check",
     "test": "bun test",
     "check:roadmap": "bun scripts/check-roadmap-sync.ts",
-    "lhci": "lhci autorun --config=./lighthouserc.json"
+    "lhci:prep": "rm -rf lhci-dist && mkdir -p lhci-dist/agent-smith && cp -r dist/. lhci-dist/agent-smith/",
+    "lhci": "bun run lhci:prep && lhci autorun --config=./lighthouserc.json"
   },
   "dependencies": {
     "@astrojs/mdx": "^4",

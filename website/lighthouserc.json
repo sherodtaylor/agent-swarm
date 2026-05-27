@@ -1,0 +1,21 @@
+{
+  "ci": {
+    "collect": {
+      "staticDistDir": "./lhci-dist",
+      "url": [
+        "http://localhost/agent-smith/index.html",
+        "http://localhost/agent-smith/log/index.html"
+      ],
+      "numberOfRuns": 3
+    },
+    "assert": {
+      "assertions": {
+        "largest-contentful-paint": ["error", { "maxNumericValue": 1500 }],
+        "total-byte-weight":        ["error", { "maxNumericValue": 256000 }],
+        "unused-javascript":        ["warn",  { "maxLength": 0 }],
+        "categories:accessibility": ["error", { "minScore": 0.95 }]
+      }
+    },
+    "upload": { "target": "temporary-public-storage" }
+  }
+}
