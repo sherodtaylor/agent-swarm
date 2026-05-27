@@ -19,8 +19,8 @@ const rendered = await Promise.all(
     event; expand for context.
   </p>
   <ul class="log-feed">
-    {rendered.map(({ entry: e, Content }) => (
-      <li>
+    {rendered.map(({ entry: e, Content }, i) => (
+      <li class:list={[{ 'pulse-new': i === 0 }]}>
         <details>
           <summary>
             <time datetime={e.data.timestamp.toISOString()}>{e.data.timestamp.toISOString().replace(/\.\d{3}/, '')}</time>{' '}
@@ -51,4 +51,24 @@ const rendered = await Promise.all(
   details[open] summary { background: var(--bg-elev); border-radius: 4px; }
   details .body     { padding: var(--space-4) var(--space-6); color: var(--fg); font-family: var(--font-body); font-size: var(--fs-body); }
   details .body p:first-child { margin-top: 0; }
+
+  /* Newest entry pulses softly in --accent for 1.5s on load. */
+  .pulse-new { position: relative; animation: log-pulse 1.5s ease-out 1; border-radius: 4px; }
+  .pulse-new::before {
+    content: ''; position: absolute; left: -6px; top: 4px; bottom: 4px;
+    width: 2px; background: var(--accent); opacity: 0;
+    animation: log-pulse-bar 1.5s ease-out 1;
+  }
+  @keyframes log-pulse {
+    0%   { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+    100% { background: transparent; }
+  }
+  @keyframes log-pulse-bar {
+    0%   { opacity: 0.9; }
+    100% { opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pulse-new, .pulse-new::before { animation: none; }
+    .pulse-new::before { opacity: 0; }
+  }
 </style>

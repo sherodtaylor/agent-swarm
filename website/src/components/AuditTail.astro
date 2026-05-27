@@ -13,8 +13,8 @@ const entries = (await getCollection('log'))
     <span class="prompt">$</span> tail -f #audit
   </div>
   <ul>
-    {entries.map(e => (
-      <li>
+    {entries.map((e, i) => (
+      <li class:list={[{ 'pulse-new': i === 0 }]}>
         <time datetime={e.data.timestamp.toISOString()}>{e.data.timestamp.toISOString().replace(/\.\d{3}/, '')}</time>
         <span class="agent">{e.data.agent}</span>
         <span class="kind">{e.data.kind.replace('_', ' ')}</span>
@@ -37,4 +37,24 @@ const entries = (await getCollection('log'))
   .run          { color: var(--accent); }
   .summary      { color: var(--fg-muted); }
   @media (max-width: 640px) { li { grid-template-columns: 1fr; gap: 0; } }
+
+  /* Newest entry pulses softly in --accent for 1.5s on load. */
+  .pulse-new { position: relative; animation: log-pulse 1.5s ease-out 1; }
+  .pulse-new::before {
+    content: ''; position: absolute; left: calc(var(--space-3) * -1); top: 0;
+    bottom: 0; width: 2px; background: var(--accent); opacity: 0;
+    animation: log-pulse-bar 1.5s ease-out 1;
+  }
+  @keyframes log-pulse {
+    0%   { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+    100% { background: transparent; }
+  }
+  @keyframes log-pulse-bar {
+    0%   { opacity: 0.9; }
+    100% { opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pulse-new, .pulse-new::before { animation: none; }
+    .pulse-new::before { opacity: 0; }
+  }
 </style>
