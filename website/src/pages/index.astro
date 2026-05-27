@@ -1,0 +1,92 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import TmuxStatusBar from '../components/TmuxStatusBar.astro';
+import HeroPane from '../components/HeroPane.astro';
+import AuditTail from '../components/AuditTail.astro';
+import AsciiBox from '../components/AsciiBox.astro';
+import LottiePlayer from '../components/LottiePlayer.astro';
+
+const asciiDraw = `${import.meta.env.BASE_URL}/animations/ascii-draw.json`.replace(/\/+/g, '/');
+---
+<BaseLayout title="Home">
+  <TmuxStatusBar slot="status-bar" />
+  <HeroPane
+    tagline="Your engineering team, running in Kubernetes."
+    sub="Persistent, long-lived engineering agents in Kubernetes pods. Real cluster credentials, real PRs, merged to main."
+    ctas={[{ label: '$ read the docs ›', href: `${import.meta.env.BASE_URL}/docs` }, { label: '$ view on github ›', href: 'https://github.com/sherodtaylor/agent-smith' }]}
+  />
+
+  <section class="narrative" style="margin-top: var(--space-20);">
+    <h2>$ describe agent-smith</h2>
+    <p class="lead measure" style="font-size:1.15rem;">
+      agent-smith deploys Claude Code as persistent, long-lived engineering
+      agents inside Kubernetes pods. Each agent has a permanent workspace
+      with real cluster credentials, follows the same git workflow as a
+      human teammate, and works autonomously until the task is done —
+      feature branches, conventional commits, pull requests, review
+      comments addressed, merged.
+    </p>
+    <p class="measure">
+      The current team is two agents — <strong>InfraBot</strong> for k3s/Flux
+      and <strong>DevBot</strong> for code — but the container image is
+      parametric: one new <code>agents/&lt;name&gt;/</code> directory and
+      you have a third teammate.
+    </p>
+  </section>
+
+  <section class="capabilities" style="margin-top: var(--space-20);">
+    <h2>$ ls capabilities</h2>
+    <ul class="caps measure">
+      <li><strong>Owns a persistent workspace</strong> — full filesystem + shell access on a long-lived volume with real cluster credentials.</li>
+      <li><strong>Follows the full engineering workflow</strong> — reads, writes, opens the PR, addresses review, merges. The whole loop.</li>
+      <li><strong>Watches its own PRs</strong> — a <code>Stop</code>-hook reruns the agent when unaddressed review comments appear.</li>
+      <li><strong>Coordinates with teammates</strong> — one agent opens a PR, the other reviews it end-to-end and posts inline findings. NATS is the durable audit log.</li>
+      <li><strong>Never holds production secrets</strong> — stub tokens are swapped for real credentials at the network boundary by an egress firewall.</li>
+    </ul>
+    <p class="sub-line measure" style="color: var(--fg-muted); margin-top: var(--space-8);">
+      Reach them from a Matrix room, from your phone, or via the Claude
+      desktop app. The interface is up to you; the engineering capability
+      is always there.
+    </p>
+  </section>
+
+  <section class="architecture" style="margin-top: var(--space-20);">
+    <h2>$ describe runtime</h2>
+    <p class="measure">
+      One image, many agents. The runtime in a single pod looks like this:
+    </p>
+    <AsciiBox ariaLabel="A StatefulSet per agent with an init container that assembles the Claude home dir, and a main container running tmux with a claude process in one pane and a bash shell in the other.">
+{`StatefulSet/<agent>           (one per agent: infrabot, devbot, …)
+└── init container: setup.sh  (assembles ~/.claude, installs plugin, clones repos)
+└── main container: entrypoint.sh
+    └── tmux session "main"
+        ├── pane 0 — claude (channels + --remote-control)  ← receives Matrix messages
+        │                                                    + exposed for remote drive-in
+        └── pane 1 — plain bash shell                       ← ad-hoc inspection on attach`}
+    </AsciiBox>
+    <div class="ascii-draw-anim" aria-hidden="true">
+      <LottiePlayer src={asciiDraw} once ariaLabel="Architecture diagram drawing" />
+    </div>
+    <p class="measure">
+      The runtime is production-grade: one Kubernetes <code>StatefulSet</code> per
+      agent, GitOps-managed via Flux, secrets from Infisical via
+      ExternalSecrets, full observability through VictoriaMetrics / VictoriaLogs.
+      These agents ship work that ends up in <code>main</code>.
+    </p>
+    <p>
+      <a href={`${import.meta.env.BASE_URL}/docs/architecture`}>$ docs/architecture ›</a>
+    </p>
+  </section>
+
+  <section class="crew-status" style="margin-top: var(--space-20);">
+    <h2>$ swarm status</h2>
+    <AuditTail limit={5} />
+  </section>
+</BaseLayout>
+
+<style>
+  ul.caps { list-style: none; padding: 0; display: grid; gap: var(--space-4); }
+  ul.caps li { padding-left: var(--space-6); position: relative; }
+  ul.caps li::before { content: '·'; position: absolute; left: 0; color: var(--accent); }
+  .ascii-draw-anim { margin-top: var(--space-4); max-width: 480px; height: 120px; opacity: 0.65; }
+</style>

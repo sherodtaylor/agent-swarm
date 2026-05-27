@@ -1,0 +1,17 @@
+---
+interface Props { ariaLabel: string; }
+const { ariaLabel } = Astro.props;
+---
+<figure role="img" aria-label={ariaLabel} class="ascii">
+  <pre><slot /></pre>
+</figure>
+
+<style>
+  .ascii { margin: var(--space-6) 0; }
+  .ascii pre {
+    font-family: var(--font-mono); font-size: var(--fs-mono); line-height: 1.4;
+    color: var(--fg); background: var(--bg-elev); padding: var(--space-4);
+    border-radius: 4px; overflow-x: auto; white-space: pre;
+  }
+  .ascii pre::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); }
+</style>

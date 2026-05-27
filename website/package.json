@@ -1,0 +1,31 @@
+{
+  "name": "agent-smith-website",
+  "type": "module",
+  "version": "0.0.1",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check",
+    "test": "bun test",
+    "check:roadmap": "bun scripts/check-roadmap-sync.ts",
+    "lhci:prep": "rm -rf lhci-dist && mkdir -p lhci-dist/agent-smith && cp -r dist/. lhci-dist/agent-smith/",
+    "lhci": "bun run lhci:prep && lhci autorun --config=./lighthouserc.json"
+  },
+  "dependencies": {
+    "@astrojs/mdx": "^4",
+    "@astrojs/sitemap": "^3.7.3",
+    "@astrojs/starlight": "0.37.7",
+    "@fontsource/jetbrains-mono": "^5.2.8",
+    "@lottiefiles/lottie-player": "^2.0.12",
+    "astro": "^5"
+  },
+  "devDependencies": {
+    "@lhci/cli": "^0.15.1",
+    "@types/bun": "^1.3.14",
+    "typescript": "^5"
+  }
+}

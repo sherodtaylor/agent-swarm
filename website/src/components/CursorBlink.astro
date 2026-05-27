@@ -1,0 +1,12 @@
+<span class="cursor" aria-hidden="true">▎</span>
+
+<style>
+  .cursor {
+    display: inline-block; color: var(--accent);
+    animation: blink 1s steps(2, end) infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) {
+    .cursor { animation: none; }
+  }
+</style>
