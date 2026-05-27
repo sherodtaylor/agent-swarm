@@ -1,0 +1,9 @@
+{
+  "generated_at": "2026-05-27T00:00:00Z",
+  "agents": [
+    { "name": "devbot",   "role": "code",  "last_pr": null, "last_seen": null },
+    { "name": "infrabot", "role": "infra", "last_pr": null, "last_seen": null }
+  ],
+  "last_release": "v0.1.21",
+  "prs_this_week": 0
+}

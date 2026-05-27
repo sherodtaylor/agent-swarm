@@ -1,0 +1,37 @@
+---
+import statusData from '../data/crew-status.json';
+
+interface Props { sessionName?: string; }
+const { sessionName = '0:main' } = Astro.props;
+
+const agents = statusData.agents ?? [];
+const lastRelease = statusData.last_release ?? '—';
+const prsThisWeek = statusData.prs_this_week ?? 0;
+---
+<div class="tmux-status" role="status">
+  <span class="left">
+    <span class="bracket">[</span>agent-smith<span class="bracket">]</span>{' '}
+    <span class="bracket">[</span>{sessionName}<span class="bracket">]</span>
+  </span>
+  <span class="right">
+    <span class="dot">●</span> {agents.length} agents ·
+    PRs this week: {prsThisWeek} ·
+    last release: {lastRelease}
+  </span>
+</div>
+
+<style>
+  .tmux-status {
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--bg-elev); color: var(--fg-muted);
+    font-family: var(--font-mono); font-size: var(--fs-mono);
+    padding: var(--space-2) var(--space-4);
+    border-bottom: 1px solid color-mix(in srgb, var(--fg-muted) 30%, transparent);
+  }
+  .bracket { color: color-mix(in srgb, var(--fg-muted) 60%, transparent); }
+  .dot     { color: var(--accent); }
+  .right   { color: var(--fg); }
+  @media (max-width: 640px) {
+    .tmux-status { font-size: 11px; flex-wrap: wrap; gap: var(--space-1); }
+  }
+</style>
