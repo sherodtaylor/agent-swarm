@@ -11,6 +11,7 @@
     "preview": "astro preview",
     "check": "astro check",
     "test": "bun test",
+    "check:roadmap": "bun scripts/check-roadmap-sync.ts",
     "lhci": "lhci autorun --config=./lighthouserc.json"
   },
   "dependencies": {
