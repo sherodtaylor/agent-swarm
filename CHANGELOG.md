@@ -21,14 +21,16 @@ cut-a-release procedure.
 
 ### Added
 
-- **`scripts/claude-reauth.py`** — Playwright-based Claude auth self-healing.
-  Runs at startup and after short-lived crashes. Tries headless SSO using a
-  persistent Chrome profile (`~/.chrome-profile` on the home PVC). If SSO
-  cookies are expired, falls back to a `ttyd` browser terminal exposed at
-  `<agentName>-shell.<hostSuffix>` (via Traefik Ingress) and sends a Matrix DM
-  with the tunnel URL. After the user completes SSO, the bot resumes
-  automatically. No Infisical or ESO involvement — credentials live only on the
-  NFS-backed home PVC.
+- **`cmd/claude-reauth/` (Go binary → `/usr/local/bin/claude-reauth`)** —
+  Claude auth self-healing as a static Go binary. Uses `chromedp` (native Go
+  CDP library) to drive Chromium headlessly with a persistent user-data-dir
+  (`~/.chrome-profile` on the home PVC). If the SSO session completes
+  automatically (cookies warm) it scrapes the OAuth callback code and feeds it
+  to the `claude auth login` subprocess stdin. If SSO is cold, it starts a
+  `ttyd` browser terminal at `<agentName>-shell.<hostSuffix>` and DMs the
+  Matrix owner. Auth check uses `claude auth status` exit code (0 = logged in,
+  1 = not) — no JSON parsing. `REAUTH_EMAIL` pre-fills the email field to skip
+  that step in the browser. No Python, no Playwright.
 - **`charts/agent-smith/templates/service-reauth.yaml`** — ClusterIP Service
   for the ttyd tunnel port (7681), conditional on `reauth.tunnel.enabled`.
 - **`charts/agent-smith/templates/ingress-reauth.yaml`** — Traefik Ingress at
@@ -46,8 +48,9 @@ cut-a-release procedure.
 - **`scripts/claude-loop.sh`** — runs `_ensure_auth` (calls `claude-reauth.py`
   if `claude auth status` reports not logged in) before starting Claude and
   after any exit with uptime < 60s.
-- **`Dockerfile`** — adds `python3`, `pip3`, `playwright` + Chromium, and
-  `ttyd` to the runtime image.
+- **`Dockerfile`** — adds a second Go build stage for `claude-reauth`, installs
+  `chromium` + `ttyd` from apt in the runtime stage. Drops Python, pip, and
+  Playwright entirely.
 
 ### Added
 
