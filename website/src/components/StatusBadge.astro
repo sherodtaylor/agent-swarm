@@ -4,7 +4,7 @@ interface Props { status: Status; label: string; }
 const { status, label } = Astro.props;
 const glyph: Record<Status, string> = { ok: '✓', warn: '!', fail: '✗', running: '●' };
 ---
-<span class:list={['status-badge', status]} role="status" aria-label={`${status}: ${label}`}>
+<span class:list={['status-badge', status]} aria-label={`${status}: ${label}`}>
   <span class="glyph">{glyph[status]}</span> {label}
 </span>
 
