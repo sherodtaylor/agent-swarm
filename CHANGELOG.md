@@ -19,6 +19,16 @@ cut-a-release procedure.
 
 ## [Unreleased]
 
+### Added
+
+- **Apache License 2.0** — repo now ships under Apache-2.0 with `LICENSE`
+  (full Apache-2.0 text) and `NOTICE` (attribution) at the root, plus a
+  `license: Apache-2.0` field in `charts/agent-smith/Chart.yaml` (visible
+  via `helm show chart`). The OCI image label
+  (`org.opencontainers.image.licenses=MIT` in `.github/workflows/docker.yml`)
+  still needs a one-line correction to `Apache-2.0` and requires a
+  `workflow`-scoped push to land — tracked separately.
+
 ---
 
 ## [0.1.21] - 2026-05-27

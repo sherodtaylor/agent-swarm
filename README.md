@@ -447,3 +447,10 @@ For the full set of rules see `agents/_shared/CLAUDE.md`; for per-agent behaviou
 The shared base rules (`agents/_shared/CLAUDE.md`) automatically include the new agent in
 the cross-agent PR review fan-out — no per-agent code change required, the rules read the
 **Your Team** list at runtime.
+
+---
+
+## License
+
+Apache License 2.0 — see [`LICENSE`](LICENSE) for the full text and [`NOTICE`](NOTICE)
+for the attribution conventions Apache distributions are expected to carry.
