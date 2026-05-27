@@ -1,21 +1,26 @@
 # agent-smith website — design spec
 
-**Status:** approved 2026-05-26 (Sherod, via Matrix brainstorm)
+**Status:** approved 2026-05-26 (Sherod, via Matrix brainstorm);
+README-sync revision 2026-05-27
 **Owner:** DevBot
-**Last updated:** 2026-05-26
+**Last updated:** 2026-05-27
 
-A public-facing website for agent-smith — an autonomous engineering
-crew that ships real work against a real Kubernetes cluster — hosted
-on GitHub Pages. Serves adopters (who might self-host), contributors
-(who might open PRs), and curious onlookers (who want to understand
-what this is) — equally.
+A public-facing website for agent-smith — your engineering team,
+running in Kubernetes — hosted on GitHub Pages. Serves adopters (who
+might self-host), contributors (who might open PRs), and curious
+onlookers (who want to understand what this is) — equally.
 
-agent-smith is a framework, not a Matrix-only tool. Matrix is the
-first channel we shipped because the Claude Code channel-plugin
-pattern already had a Matrix implementation; the agent loop itself is
-channel-agnostic, and the site treats it as such (see §6 for the
-out-of-scope cut and the roadmap for the multi-channel pull-forward
-trigger).
+The site is multi-interface in its framing from day one, matching the
+README: agents are reachable from a Matrix room, from a phone, or via
+the Claude desktop app — the interface is up to the operator, the
+engineering capability is always there.
+
+> **Canonical-wording convention:** the README is the single source
+> of truth for product positioning (tagline, hero sub, the "What your
+> team can do" bullets, the production-grade substrate paragraph).
+> Whenever the README moves, this spec follows in a small sync PR —
+> not the other way around. References below quote the current
+> README on `main` as of the *Last updated* date above.
 
 ---
 
@@ -40,25 +45,42 @@ Six sections, in order:
      `[agent-smith] [0:main] ● 2 agents · PRs this week: 11 · last
      release: v0.1.16`. All values sourced from gh-api at build time
      (no cluster reach-in — see §3.3); refresh cadence = each deploy.
-2. **What this is.** 3-paragraph narrative. Lead line: "agent-smith
-   runs the Claude Code CLI as a long-lived process in a Kubernetes
-   pod. The interface is a Matrix room. The bots open PRs against
-   real repos and review each other's work." Editorial layout —
-   oversized lead line, restrained body.
-3. **What the crew does.** 4-tile grid (single column on mobile):
-   - `$ pr open` — *ships PRs against real repos*
-   - `$ pr review` — *reviews each other's work, in line*
-   - `$ kubectl apply` — *runs on a real, GitOps-managed cluster*
-   - `$ memory write` — *learns from what it ships*
+2. **What this is.** 3-paragraph narrative. Lead line mirrors the
+   README opening: "agent-smith deploys Claude Code as persistent,
+   long-lived engineering agents inside Kubernetes pods. Each agent
+   has a permanent workspace with real cluster credentials, follows
+   the same git workflow as a human teammate, and works
+   autonomously until the task is done — feature branches,
+   conventional commits, pull requests, review comments addressed,
+   merged." Editorial layout — oversized lead line, restrained body.
+3. **What your team can do.** 5-bullet list mirroring the README
+   section of the same name (single column on mobile, terminal-styled
+   bullets):
+   - **Owns a persistent workspace** — full filesystem + shell access
+     on a long-lived volume with real cluster credentials.
+   - **Follows the full engineering workflow** — reads, writes,
+     opens the PR, addresses review, merges. The whole loop.
+   - **Watches its own PRs** — a `Stop`-hook reruns the agent when
+     unaddressed review comments appear.
+   - **Coordinates with teammates** — one agent opens a PR, the
+     other reviews it end-to-end and posts inline findings. NATS is
+     the durable audit log.
+   - **Never holds production secrets** — stub tokens are swapped
+     for real credentials at the network boundary by an egress
+     firewall.
+
+   Sub-line after the bullets: "Reach them from a Matrix room, from
+   your phone, or via the Claude desktop app. The interface is up
+   to you; the engineering capability is always there." (verbatim
+   from README)
 4. **Under the hood.** Architecture summary using ASCII-box diagrams,
    not SVGs. Covers: StatefulSet per agent, init container assembling
-   `~/.claude/`, tmux dance, iron-proxy egress credential firewall,
-   GitOps via Flux, secrets sourced from Infisical via
-   ExternalSecrets, observability via VictoriaMetrics +
-   VictoriaLogs, per-agent egress capability scope. Each subsection
-   links to the deeper docs page. (Same substrate language the
-   README uses in "The problem this solves" — keep them in sync;
-   the README is the canonical wording.)
+   `~/.claude/`, tmux dance (single `claude` process with channels +
+   `--remote-control`), iron-proxy egress credential firewall, GitOps
+   via Flux, secrets sourced from Infisical via ExternalSecrets,
+   observability via VictoriaMetrics / VictoriaLogs. Each subsection
+   links to the deeper docs page. The closing line lifts the README's
+   own: "These agents ship work that ends up in `main`."
 5. **The crew right now.** Build-time current status block (no
    prose; refreshed each deploy, not real-time). Per-agent: name,
    role, last shipped PR, last activity timestamp. Sourced from
@@ -298,8 +320,10 @@ brochure, rewrite it.
 
 ### 4.2 Hero copy
 
-- Tagline (display, oversized): **`agent-smith — an autonomous engineering crew`**
-- Sub (one line, body mono): **`Two bots. One real cluster. Real PRs, reviewed by each other, shipped to main.`**
+Verbatim from the README (the canonical wording — see top of spec):
+
+- Tagline (display, oversized): **`Your engineering team, running in Kubernetes.`**
+- Sub (one line, body mono): **`Persistent, long-lived engineering agents in Kubernetes pods. Real cluster credentials, real PRs, merged to main.`**
 - Status strip: **`● running · 2 agents · uptime 14d · PRs shipped this week: 11`**
 - CTAs: **`$ read the docs ›`** · **`$ view on github ›`**
 
@@ -310,15 +334,19 @@ in §3.3 is wired.)
 
 Drafted now, finalized when implementing:
 
-- "What this is" → "agent-smith runs the Claude Code CLI as a
-  long-lived process in a Kubernetes pod. The human interface is a
-  channel plugin — Matrix today, framework-extensible. The bots open
-  PRs against real repos and review each other's work."
-- "What the crew does" → 4 tiles, each a verb-phrase plus a single
-  sentence.
-- "Under the hood" → leans on existing README content (StatefulSet,
-  init container, iron-proxy, tmux); links into `/docs/architecture`.
-- "The crew right now" → no prose; just the live status block.
+- "What this is" → mirrors the README opening (see §1.1.2 above) —
+  "agent-smith deploys Claude Code as persistent, long-lived
+  engineering agents inside Kubernetes pods. Each agent has a
+  permanent workspace…" through to "…review comments addressed,
+  merged."
+- "What your team can do" → 5 bullets verbatim from README (see
+  §1.1.3), followed by the Matrix/phone/Claude-desktop sub-line.
+- "Under the hood" → leans on existing README content (single-claude
+  pod, tmux dance, channel plugin, Stop-hook, NATS); links into
+  `/docs/architecture`. Closes with the README's "These agents ship
+  work that ends up in `main`."
+- "The crew right now" → no prose; just the build-time current
+  status block.
 
 ### 4.4 Log entry format
 
