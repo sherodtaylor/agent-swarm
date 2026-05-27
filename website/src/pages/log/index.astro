@@ -5,6 +5,11 @@ import TmuxStatusBar from '../../components/TmuxStatusBar.astro';
 
 const entries = (await getCollection('log'))
   .sort((a, b) => +b.data.timestamp - +a.data.timestamp);
+
+// Pre-render each entry so we can show the MDX body inside <details>.
+const rendered = await Promise.all(
+  entries.map(async (e) => ({ entry: e, Content: (await e.render()).Content }))
+);
 ---
 <BaseLayout title="Log">
   <TmuxStatusBar slot="status-bar" sessionName="0:log" />
@@ -14,17 +19,20 @@ const entries = (await getCollection('log'))
     event; expand for context.
   </p>
   <ul class="log-feed">
-    {entries.map(e => (
+    {rendered.map(({ entry: e, Content }) => (
       <li>
         <details>
           <summary>
             <time datetime={e.data.timestamp.toISOString()}>{e.data.timestamp.toISOString().replace(/\.\d{3}/, '')}</time>{' '}
             <span class="agent">{e.data.agent}</span>{' '}
+            <span class="kind">{e.data.kind.replace('_', ' ')}</span>{' '}
             <span class="run">run={e.data.run_id.slice(0, 6)}</span>{' '}
             <span class="summary">{e.data.summary}</span>
             {e.data.link && <a href={e.data.link} class="link">[link]</a>}
           </summary>
-          {/* Body rendered when an entry has MDX content */}
+          <div class="body">
+            <Content />
+          </div>
         </details>
       </li>
     ))}
@@ -35,9 +43,12 @@ const entries = (await getCollection('log'))
   .log-feed   { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-2); font-family: var(--font-mono); font-size: var(--fs-mono); }
   .log-feed time    { color: var(--fg-muted); }
   .log-feed .agent  { color: var(--fg); }
+  .log-feed .kind   { color: var(--accent-warn); }
   .log-feed .run    { color: var(--accent); }
   .log-feed .summary{ color: var(--fg-muted); }
   .log-feed .link   { margin-left: var(--space-2); color: var(--accent); }
   details summary   { cursor: pointer; padding: var(--space-2); }
   details[open] summary { background: var(--bg-elev); border-radius: 4px; }
+  details .body     { padding: var(--space-4) var(--space-6); color: var(--fg); font-family: var(--font-body); font-size: var(--fs-body); }
+  details .body p:first-child { margin-top: 0; }
 </style>
