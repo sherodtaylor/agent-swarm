@@ -1,0 +1,47 @@
+---
+interface Props {
+  src: string;
+  autoplay?: boolean;
+  loop?: boolean;
+  once?: boolean;
+  ariaLabel?: string;
+}
+const { src, autoplay = true, loop = false, once = false, ariaLabel } = Astro.props;
+---
+<div class="lottie-host" role="img" aria-label={ariaLabel}>
+  <noscript>
+    <p class="fallback">[motion graphic — enable JS to play]</p>
+  </noscript>
+  <lottie-player
+    src={src}
+    background="transparent"
+    speed="1"
+    autoplay={autoplay ? '' : undefined}
+    loop={loop ? '' : undefined}
+    data-once={once ? '1' : undefined}
+  ></lottie-player>
+</div>
+
+<script>
+  // Lazy-load the player only when the component appears in the viewport.
+  const io = new IntersectionObserver(async (entries) => {
+    for (const e of entries) {
+      if (e.isIntersecting) {
+        await import('@lottiefiles/lottie-player');
+        io.unobserve(e.target);
+      }
+    }
+  }, { rootMargin: '200px' });
+
+  document.querySelectorAll('.lottie-host').forEach((el) => io.observe(el));
+
+  // Honour `prefers-reduced-motion` by freezing on frame 0.
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    document.querySelectorAll('lottie-player').forEach((p) => p.setAttribute('autoplay', 'false'));
+  }
+</script>
+
+<style>
+  .lottie-host { width: 100%; min-height: 1px; }
+  .fallback    { font-family: var(--font-mono); color: var(--fg-muted); }
+</style>
