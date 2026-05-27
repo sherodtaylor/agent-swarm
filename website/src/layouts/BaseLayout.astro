@@ -1,0 +1,38 @@
+---
+import '../styles/tokens.css';
+import '../styles/global.css';
+
+interface Props { title: string; description?: string; }
+const { title, description = 'Your engineering team, running in Kubernetes.' } = Astro.props;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title} — agent-smith</title>
+    <meta name="description" content={description} />
+    <link rel="icon" type="image/svg+xml" href={`${import.meta.env.BASE_URL}/favicon.svg`} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+  </head>
+  <body>
+    <a href="#main" class="skip-link">Skip to content</a>
+    <slot name="status-bar" />
+    <main id="main">
+      <slot />
+    </main>
+    <footer style="border-top:1px solid var(--bg-elev); padding:var(--space-12) var(--space-6); color:var(--fg-muted); font-size:var(--fs-mono);">
+      <slot name="footer">
+        <p>
+          <a href="https://github.com/sherodtaylor/agent-smith">repo</a> ·
+          <a href="https://github.com/sherodtaylor/agent-smith/blob/main/LICENSE">license</a> ·
+          <a href="https://github.com/sherodtaylor/agent-smith/blob/main/CONTRIBUTING.md">contributing</a> ·
+          <a href={`${import.meta.env.BASE_URL}/log`}>log</a> ·
+          <a href={`${import.meta.env.BASE_URL}/docs`}>docs</a>
+        </p>
+      </slot>
+    </footer>
+  </body>
+</html>
