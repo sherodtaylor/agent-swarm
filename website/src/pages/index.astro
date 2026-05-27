@@ -4,6 +4,9 @@ import TmuxStatusBar from '../components/TmuxStatusBar.astro';
 import HeroPane from '../components/HeroPane.astro';
 import AuditTail from '../components/AuditTail.astro';
 import AsciiBox from '../components/AsciiBox.astro';
+import LottiePlayer from '../components/LottiePlayer.astro';
+
+const asciiDraw = `${import.meta.env.BASE_URL}/animations/ascii-draw.json`.replace(/\/+/g, '/');
 ---
 <BaseLayout title="Home">
   <TmuxStatusBar slot="status-bar" />
@@ -61,6 +64,9 @@ import AsciiBox from '../components/AsciiBox.astro';
         │                                                    + exposed for remote drive-in
         └── pane 1 — plain bash shell                       ← ad-hoc inspection on attach`}
     </AsciiBox>
+    <div class="ascii-draw-anim" aria-hidden="true">
+      <LottiePlayer src={asciiDraw} once ariaLabel="Architecture diagram drawing" />
+    </div>
     <p class="measure">
       The runtime is production-grade: one Kubernetes <code>StatefulSet</code> per
       agent, GitOps-managed via Flux, secrets from Infisical via
@@ -82,4 +88,5 @@ import AsciiBox from '../components/AsciiBox.astro';
   ul.caps { list-style: none; padding: 0; display: grid; gap: var(--space-4); }
   ul.caps li { padding-left: var(--space-6); position: relative; }
   ul.caps li::before { content: '·'; position: absolute; left: 0; color: var(--accent); }
+  .ascii-draw-anim { margin-top: var(--space-4); max-width: 480px; height: 120px; opacity: 0.65; }
 </style>
