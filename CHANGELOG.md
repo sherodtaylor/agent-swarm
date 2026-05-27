@@ -21,6 +21,23 @@ cut-a-release procedure.
 
 ---
 
+## [0.1.23] - 2026-05-27
+
+### Changed
+
+- **Matrix channel plugin source temporarily flipped to `sherodtaylor` fork** ([#47](https://github.com/sherodtaylor/agent-smith/pull/47)):
+  `scripts/setup.sh` and `agents/_shared/settings.json` now install
+  `claude-code-channel-matrix` from `sherodtaylor/claude-code-channel-matrix`
+  instead of upstream `zekker6`. The fork carries new tools shipped in
+  [sherodtaylor/claude-code-channel-matrix#1](https://github.com/sherodtaylor/claude-code-channel-matrix/pull/1):
+  per-call threading via `reply_to_event_id`, an `edit_message` tool
+  for in-place progress updates that don't push-notify, and auto-typing
+  on inbound (default on, set `MATRIX_TYPING=false` to disable).
+  Reverts to upstream after the three additive PRs land in `zekker6`
+  and a tagged release ships.
+
+---
+
 ## [0.1.22] - 2026-05-27
 
 ### Added
