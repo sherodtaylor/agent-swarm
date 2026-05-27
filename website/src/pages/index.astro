@@ -32,4 +32,26 @@ import CursorBlink from '../components/CursorBlink.astro';
       you have a third teammate.
     </p>
   </section>
+
+  <section class="capabilities" style="margin-top: var(--space-20);">
+    <h2>$ ls capabilities</h2>
+    <ul class="caps measure">
+      <li><strong>Owns a persistent workspace</strong> — full filesystem + shell access on a long-lived volume with real cluster credentials.</li>
+      <li><strong>Follows the full engineering workflow</strong> — reads, writes, opens the PR, addresses review, merges. The whole loop.</li>
+      <li><strong>Watches its own PRs</strong> — a <code>Stop</code>-hook reruns the agent when unaddressed review comments appear.</li>
+      <li><strong>Coordinates with teammates</strong> — one agent opens a PR, the other reviews it end-to-end and posts inline findings. NATS is the durable audit log.</li>
+      <li><strong>Never holds production secrets</strong> — stub tokens are swapped for real credentials at the network boundary by an egress firewall.</li>
+    </ul>
+    <p class="sub-line measure" style="color: var(--fg-muted); margin-top: var(--space-8);">
+      Reach them from a Matrix room, from your phone, or via the Claude
+      desktop app. The interface is up to you; the engineering capability
+      is always there.
+    </p>
+  </section>
 </BaseLayout>
+
+<style>
+  ul.caps { list-style: none; padding: 0; display: grid; gap: var(--space-4); }
+  ul.caps li { padding-left: var(--space-6); position: relative; }
+  ul.caps li::before { content: '·'; position: absolute; left: 0; color: var(--accent); }
+</style>
