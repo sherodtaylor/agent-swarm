@@ -13,6 +13,8 @@ export default defineConfig({
     starlight({
       title: 'agent-smith',
       customCss: ['./src/styles/tokens.css', './src/styles/global.css'],
+      // We provide our own terminal-styled 404 page at src/pages/404.astro.
+      disable404Route: true,
       sidebar: [
         { label: 'Getting Started', slug: 'getting-started' },
         { label: 'Architecture',    slug: 'architecture' },

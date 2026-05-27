@@ -1,0 +1,10 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import TmuxStatusBar from '../components/TmuxStatusBar.astro';
+---
+<BaseLayout title="404">
+  <TmuxStatusBar slot="status-bar" sessionName="0:wat" />
+  <h1>$ ls /agent-smith/wat</h1>
+  <pre>wat: No such file or directory</pre>
+  <p><a href={`${import.meta.env.BASE_URL}/`}>$ cd .. ›</a></p>
+</BaseLayout>
