@@ -149,17 +149,22 @@ func tryHeadless(authURL string, loginCmd *exec.Cmd) (ok bool, err error) {
 	var finalURL string
 	err = chromedp.Run(timeoutCtx,
 		chromedp.Navigate(authURL),
-		chromedp.WaitFunc(func(ctx context.Context, _ *chromedp.Frame, _ int) ([]*chromedp.Node, error) {
-			var currentURL string
-			if e := chromedp.Location(&currentURL).Do(ctx); e != nil {
-				return nil, nil
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			for {
+				var currentURL string
+				if e := chromedp.Location(&currentURL).Do(ctx); e != nil {
+					return e
+				}
+				if strings.HasPrefix(currentURL, callbackPrefix) {
+					finalURL = currentURL
+					return nil
+				}
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case <-time.After(500 * time.Millisecond):
+				}
 			}
-			if strings.HasPrefix(currentURL, callbackPrefix) {
-				finalURL = currentURL
-				return []*chromedp.Node{}, nil
-			}
-			time.Sleep(500 * time.Millisecond)
-			return nil, nil
 		}),
 	)
 
