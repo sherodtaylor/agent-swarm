@@ -21,6 +21,39 @@ cut-a-release procedure.
 
 ### Added
 
+- **`cmd/claude-reauth/` (Go binary → `/usr/local/bin/claude-reauth`)** —
+  Claude auth self-healing as a static Go binary. Uses `chromedp` (native Go
+  CDP library) to drive Chromium headlessly with a persistent user-data-dir
+  (`~/.chrome-profile` on the home PVC). If the SSO session completes
+  automatically (cookies warm) it scrapes the OAuth callback code and feeds it
+  to the `claude auth login` subprocess stdin. If SSO is cold, it starts a
+  `ttyd` browser terminal at `<agentName>-shell.<hostSuffix>` and DMs the
+  Matrix owner. Auth check uses `claude auth status` exit code (0 = logged in,
+  1 = not) — no JSON parsing. `REAUTH_EMAIL` pre-fills the email field to skip
+  that step in the browser. No Python, no Playwright.
+- **`charts/agent-smith/templates/service-reauth.yaml`** — ClusterIP Service
+  for the ttyd tunnel port (7681), conditional on `reauth.tunnel.enabled`.
+- **`charts/agent-smith/templates/ingress-reauth.yaml`** — Traefik Ingress at
+  `<agentName>-shell<hostSuffix>` with wildcard TLS, conditional on
+  `reauth.tunnel.enabled`.
+- **`charts/agent-smith/values.yaml`** — new `reauth.tunnel` section
+  (`enabled`, `hostSuffix`, `tlsSecretName`); `REAUTH_TUNNEL_HOST` wired into
+  the agent container env.
+
+### Changed
+
+- **`scripts/setup.sh`** — credentials write is now skipped when the home PVC
+  already holds real (non-stub) tokens, preserving credentials across pod
+  restarts. Previously the init container always overwrote from env vars.
+- **`scripts/claude-loop.sh`** — runs `_ensure_auth` (calls `claude-reauth.py`
+  if `claude auth status` reports not logged in) before starting Claude and
+  after any exit with uptime < 60s.
+- **`Dockerfile`** — adds a second Go build stage for `claude-reauth`, installs
+  `chromium` + `ttyd` from apt in the runtime stage. Drops Python, pip, and
+  Playwright entirely.
+
+### Added
+
 - **Apache License 2.0** — repo now ships under Apache-2.0 with `LICENSE`
   (full Apache-2.0 text) and `NOTICE` (attribution) at the root, plus a
   `license: Apache-2.0` field in `charts/agent-smith/Chart.yaml` (visible
