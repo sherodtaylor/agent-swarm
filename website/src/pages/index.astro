@@ -48,6 +48,36 @@ import CursorBlink from '../components/CursorBlink.astro';
       is always there.
     </p>
   </section>
+
+  <section class="architecture" style="margin-top: var(--space-20);">
+    <h2>$ describe runtime</h2>
+    <p class="measure">
+      One image, many agents. The runtime in a single pod looks like this:
+    </p>
+    <AsciiBox ariaLabel="A StatefulSet per agent with an init container that assembles the Claude home dir, and a main container running tmux with a claude process in one pane and a bash shell in the other.">
+{`StatefulSet/<agent>           (one per agent: infrabot, devbot, …)
+└── init container: setup.sh  (assembles ~/.claude, installs plugin, clones repos)
+└── main container: entrypoint.sh
+    └── tmux session "main"
+        ├── pane 0 — claude (channels + --remote-control)  ← receives Matrix messages
+        │                                                    + exposed for remote drive-in
+        └── pane 1 — plain bash shell                       ← ad-hoc inspection on attach`}
+    </AsciiBox>
+    <p class="measure">
+      The runtime is production-grade: one Kubernetes <code>StatefulSet</code> per
+      agent, GitOps-managed via Flux, secrets from Infisical via
+      ExternalSecrets, full observability through VictoriaMetrics / VictoriaLogs.
+      These agents ship work that ends up in <code>main</code>.
+    </p>
+    <p>
+      <a href={`${import.meta.env.BASE_URL}/docs/architecture`}>$ docs/architecture ›</a>
+    </p>
+  </section>
+
+  <section class="crew-status" style="margin-top: var(--space-20);">
+    <h2>$ swarm status</h2>
+    <AuditTail limit={5} />
+  </section>
 </BaseLayout>
 
 <style>
