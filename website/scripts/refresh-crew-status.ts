@@ -45,7 +45,15 @@ async function fetchPRs(repos: string[], token: string): Promise<MergedPR[]> {
     const res = await fetch(`https://api.github.com/repos/${repo}/pulls?state=closed&per_page=50`, {
       headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' },
     });
-    const data = await res.json() as any[];
+    const data = await res.json();
+    // Default `GITHUB_TOKEN` in GitHub Actions is scoped to the current repo.
+    // Cross-repo reads (e.g. sherodtaylor/homelab from inside agent-smith's
+    // workflow) come back as `{"message": "Not Found"}` not an array — skip
+    // with a warning instead of crashing on `for…of {}`.
+    if (!Array.isArray(data)) {
+      console.warn(`[refresh-crew-status] ${repo}: HTTP ${res.status} — ${JSON.stringify(data).slice(0, 160)}`);
+      continue;
+    }
     for (const p of data) if (p.merged_at) out.push({ number: p.number, title: p.title, merged_at: p.merged_at, user: { login: p.user.login }, repo: repo.split('/')[1] });
   }
   return out;
