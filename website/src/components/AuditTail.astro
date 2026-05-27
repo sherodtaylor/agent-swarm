@@ -1,0 +1,38 @@
+---
+import { getCollection } from 'astro:content';
+
+interface Props { limit?: number; }
+const { limit = 5 } = Astro.props;
+
+const entries = (await getCollection('log'))
+  .sort((a, b) => +new Date(b.data.timestamp) - +new Date(a.data.timestamp))
+  .slice(0, limit);
+---
+<section class="audit-tail" aria-label="Recent log entries">
+  <div class="prompt-line">
+    <span class="prompt">$</span> tail -f #audit
+  </div>
+  <ul>
+    {entries.map(e => (
+      <li>
+        <time datetime={e.data.timestamp.toISOString()}>{e.data.timestamp.toISOString().replace(/\.\d{3}/, '')}</time>
+        <span class="agent">{e.data.agent}</span>
+        <span class="run">run={e.data.run_id.slice(0, 6)}</span>
+        <span class="summary">{e.data.summary}</span>
+      </li>
+    ))}
+  </ul>
+</section>
+
+<style>
+  .audit-tail   { background: var(--bg-elev); padding: var(--space-6); border-radius: 6px; font-family: var(--font-mono); font-size: var(--fs-mono); }
+  .prompt-line  { color: var(--fg-muted); margin-bottom: var(--space-4); }
+  .prompt       { color: var(--accent); }
+  ul            { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-2); }
+  li            { display: grid; grid-template-columns: auto auto auto 1fr; gap: var(--space-3); align-items: baseline; }
+  time          { color: var(--fg-muted); }
+  .agent        { color: var(--fg); }
+  .run          { color: var(--accent); }
+  .summary      { color: var(--fg-muted); }
+  @media (max-width: 640px) { li { grid-template-columns: 1fr; gap: 0; } }
+</style>
