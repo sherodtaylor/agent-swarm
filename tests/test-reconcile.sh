@@ -149,5 +149,46 @@ plugin_calls=$(grep -E 'plugin install|plugin uninstall' "${CALLS_LOG}" | wc -l 
 assert_eq "${plugin_calls}" "0" "empty enabledPlugins: no plugin install/uninstall calls"
 teardown_test
 
+# ── Case: plugin missing from installed_plugins.json → install ──
+echo "[case] plugin missing"
+setup_test
+write_settings_with_plugin "0.7.0"
+write_installed ""
+run_reconciler >/dev/null
+install_calls=$(grep -E 'plugin install matrix@claude-code-channel-matrix' "${CALLS_LOG}" | wc -l | tr -d ' ' || true)
+uninstall_calls=$(grep -E 'plugin uninstall matrix@claude-code-channel-matrix' "${CALLS_LOG}" | wc -l | tr -d ' ' || true)
+assert_eq "${install_calls}" "1" "plugin missing: one install call"
+assert_eq "${uninstall_calls}" "0" "plugin missing: zero uninstall calls"
+teardown_test
+
+# ── Case: installed == declared → no plugin calls ──
+echo "[case] plugin in sync"
+setup_test
+write_settings_with_plugin "0.7.0"
+write_installed "0.7.0"
+run_reconciler >/dev/null
+install_calls=$(grep -E 'plugin install matrix@claude-code-channel-matrix' "${CALLS_LOG}" | wc -l | tr -d ' ' || true)
+uninstall_calls=$(grep -E 'plugin uninstall matrix@claude-code-channel-matrix' "${CALLS_LOG}" | wc -l | tr -d ' ' || true)
+assert_eq "${install_calls}" "0" "in sync: zero install calls"
+assert_eq "${uninstall_calls}" "0" "in sync: zero uninstall calls"
+teardown_test
+
+# ── Case: installed != declared → uninstall + install ──
+echo "[case] plugin wrong version"
+setup_test
+write_settings_with_plugin "0.7.0"
+write_installed "0.6.0"
+run_reconciler >/dev/null
+install_calls=$(grep -E 'plugin install matrix@claude-code-channel-matrix' "${CALLS_LOG}" | wc -l | tr -d ' ' || true)
+uninstall_calls=$(grep -E 'plugin uninstall matrix@claude-code-channel-matrix' "${CALLS_LOG}" | wc -l | tr -d ' ' || true)
+assert_eq "${install_calls}" "1" "wrong version: one install call"
+assert_eq "${uninstall_calls}" "1" "wrong version: one uninstall call"
+
+# Order: uninstall MUST precede install
+uninstall_line=$(grep -nE 'plugin uninstall' "${CALLS_LOG}" | head -1 | cut -d: -f1)
+install_line=$(grep -nE 'plugin install' "${CALLS_LOG}" | head -1 | cut -d: -f1)
+assert_eq "$([ "${uninstall_line:-99}" -lt "${install_line:-0}" ] && echo before || echo not-before)" "before" "wrong version: uninstall precedes install"
+teardown_test
+
 echo "[test-reconcile] summary: pass=${PASS} fail=${FAIL}"
 exit $FAIL

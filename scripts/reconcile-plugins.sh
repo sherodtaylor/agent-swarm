@@ -47,17 +47,53 @@ fi
 #   - non-empty: install if missing; uninstall+reinstall if version drifts
 reconcile_plugin() {
   local plugin_id="$1"
-  local declared_version="$2"
-  # STUB — replaced in Task 4
-  :
+  local declared="$2"
+
+  local installed
+  installed=$(jq -r ".plugins.\"${plugin_id}\"[0].version // \"\"" "${INSTALLED}" 2>/dev/null || true)
+
+  # Plain `true` value in enabledPlugins → declared="" → install-if-missing, skip drift check.
+  if [ -z "${declared}" ]; then
+    if [ -z "${installed}" ]; then
+      log "${plugin_id}: not installed (no version pin) → installing latest"
+      claude plugin install "${plugin_id}" 2>&1 || warn "${plugin_id}: install failed; continuing"
+    else
+      log "${plugin_id}: installed at ${installed} (no version pin, skipping drift check)"
+    fi
+    return 0
+  fi
+
+  if [ "${installed}" = "${declared}" ]; then
+    log "${plugin_id}: in sync at ${declared}"
+    return 0
+  fi
+
+  if [ -z "${installed}" ]; then
+    log "${plugin_id}: not installed → installing ${declared}"
+  else
+    log "${plugin_id}: drift ${installed} → ${declared}, reinstalling"
+    claude plugin uninstall "${plugin_id}" 2>&1 || true
+  fi
+
+  if ! claude plugin install "${plugin_id}" 2>&1; then
+    warn "${plugin_id}: install failed; continuing"
+    return 0
+  fi
+
+  local new_installed
+  new_installed=$(jq -r ".plugins.\"${plugin_id}\"[0].version // \"\"" "${INSTALLED}" 2>/dev/null || true)
+  if [ "${new_installed}" != "${declared}" ]; then
+    warn "${plugin_id}: declared ${declared} but marketplace served ${new_installed:-<none>}"
+  fi
 }
 
-# Iterate declared plugins and call the stub for each.
+# Iterate declared plugins and call reconcile_plugin for each.
 # For an empty enabledPlugins map, jq emits nothing and the loop runs zero times.
-while IFS= read -r plugin_id; do
-  declared=$(jq -r ".enabledPlugins.\"${plugin_id}\" | if type == \"object\" then .version else \"\" end" "${SETTINGS}")
+plugin_ids=$(jq -r '.enabledPlugins | keys[]' "${SETTINGS}" 2>/dev/null || true)
+for plugin_id in ${plugin_ids}; do
+  declared=$(jq -r ".enabledPlugins.\"${plugin_id}\" | if type == \"object\" then .version else \"\" end" "${SETTINGS}" 2>/dev/null || true)
   reconcile_plugin "${plugin_id}" "${declared}"
-done < <(jq -r '.enabledPlugins | keys[]' "${SETTINGS}")
+done
 
 log "complete"
 exit 0
