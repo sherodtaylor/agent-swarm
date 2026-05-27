@@ -128,5 +128,26 @@ run_reconciler() {
 
 # ── Harness ready ──────────────────────────────────────────────────────────
 echo "[test-reconcile] harness loaded"
+
+# ── Case: empty enabledPlugins produces zero plugin operations ──
+echo "[case] empty enabledPlugins"
+setup_test
+# Write a settings.json with marketplaces but no enabledPlugins entries.
+cat > "${APP_DIR}/agents/_shared/settings.json" <<'EOF'
+{
+  "extraKnownMarketplaces": {
+    "claude-code-channel-matrix": {
+      "source": { "source": "github", "repo": "sherodtaylor/claude-code-channel-matrix" }
+    }
+  },
+  "enabledPlugins": {}
+}
+EOF
+write_installed ""
+run_reconciler >/dev/null
+plugin_calls=$(grep -E 'plugin install|plugin uninstall' "${CALLS_LOG}" | wc -l | tr -d ' ' || true)
+assert_eq "${plugin_calls}" "0" "empty enabledPlugins: no plugin install/uninstall calls"
+teardown_test
+
 echo "[test-reconcile] summary: pass=${PASS} fail=${FAIL}"
 exit $FAIL
