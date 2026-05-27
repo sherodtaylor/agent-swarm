@@ -1,4 +1,6 @@
 ---
+import LottiePlayer from './LottiePlayer.astro';
+
 interface Props {
   prompt?: string;
   tagline: string;
@@ -6,11 +8,15 @@ interface Props {
   ctas: { label: string; href: string }[];
 }
 const { prompt = '$', tagline, sub, ctas } = Astro.props;
+const heroBoot = `${import.meta.env.BASE_URL}/animations/hero-boot.json`.replace(/\/+/g, '/');
 ---
 <section class="hero-pane">
   <div class="prompt-line">
     <span class="prompt">{prompt}</span>
     <span class="cmd">agent-smith --hello</span>
+    <span class="boot-overlay" aria-hidden="true">
+      <LottiePlayer src={heroBoot} once ariaLabel="Boot sequence" />
+    </span>
   </div>
   <h1>{tagline}</h1>
   <p class="sub">{sub}</p>
@@ -24,8 +30,9 @@ const { prompt = '$', tagline, sub, ctas } = Astro.props;
     background: var(--bg-elev); padding: var(--space-12);
     border-radius: 6px; min-height: 380px;
   }
-  .prompt-line { font-family: var(--font-mono); font-size: var(--fs-mono); color: var(--fg-muted); margin-bottom: var(--space-8); }
+  .prompt-line { font-family: var(--font-mono); font-size: var(--fs-mono); color: var(--fg-muted); margin-bottom: var(--space-8); position: relative; }
   .prompt { color: var(--accent); margin-right: var(--space-2); }
+  .boot-overlay { display: block; max-width: 320px; height: 32px; margin-top: var(--space-2); }
   .sub    { color: var(--fg-muted); max-width: var(--measure); margin: var(--space-6) 0 var(--space-12); }
   .ctas   { display: flex; gap: var(--space-4); flex-wrap: wrap; }
   .cta    {

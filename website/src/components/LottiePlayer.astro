@@ -35,9 +35,18 @@ const { src, autoplay = true, loop = false, once = false, ariaLabel } = Astro.pr
 
   document.querySelectorAll('.lottie-host').forEach((el) => io.observe(el));
 
-  // Honour `prefers-reduced-motion` by freezing on frame 0.
+  // Honour `prefers-reduced-motion`: don't autoplay, and once the player has
+  // loaded, seek to the final frame so the user sees the polished end-state
+  // instead of an empty/partial frame 0.
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    document.querySelectorAll('lottie-player').forEach((p) => p.setAttribute('autoplay', 'false'));
+    document.querySelectorAll('lottie-player').forEach((p) => {
+      p.removeAttribute('autoplay');
+      p.addEventListener('ready', () => {
+        // lottie-player exposes seek(frameOrPercent); '100%' jumps to the last frame.
+        // @ts-expect-error — web component API
+        if (typeof p.seek === 'function') p.seek('100%');
+      });
+    });
   }
 </script>
 
