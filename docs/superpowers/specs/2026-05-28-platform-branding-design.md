@@ -315,20 +315,30 @@ Two layers of control:
 Both layers compose with the same semantics: when in DND, the agent
 **continues working** but:
 
-1. **No new `reply` calls** to the originating room. Status updates
-   become `edit_message` to a pinned "DND status" message — edits do
-   NOT trigger push notifications (per the matrix-channel spec
-   `docs/superpowers/specs/2026-05-27-matrix-channel-threading-tools-design.md` §2.2).
+1. **No `reply` calls** to the originating room — Matrix surface is
+   silent for the duration. (Suppressed at the persona layer in
+   `agents/_shared/CLAUDE.md`; no plugin dependency.)
 2. **`react` is suppressed** (no 👀 ack on inbound — silent receipt).
-3. **The audit log fills normally** (`/log` page still gets entries
-   timestamped with `state: vacation` so the operator can scrollback
-   in the morning).
+3. **The audit log fills normally** — the website's `/log` page is
+   the operator's "what happened while I slept" surface. Entries get
+   `state: vacation` so the morning scrollback reads clearly.
 4. **Outbound PRs, commits, gh comments** are NOT suppressed — only
    the Matrix surface goes quiet. The crew still ships.
+5. **DND-end rollup** — when the window closes (auto on clock or via
+   `/dnd off`), the agent posts ONE summary reply: *"While you were
+   away (22:00–08:00): shipped 2 PRs, reviewed 1, opened 1 incident
+   (acknowledged at 04:12). Full audit: /log."* This is the only
+   push the operator gets for the entire window.
 
 Critical messages (anything tagged `kind=incident` or `kind=blocked`)
 override DND and post normally; otherwise an incident at 03:00
 silently rotting in audit log is the wrong default.
+
+This design stands alone — no dependency on the matrix-channel-fork
+`edit_message` tool. (When `edit_message` eventually lands, a future
+revision can swap the silent-reply path for an `edit_message`-to-a-
+pinned-status pattern, giving the operator live "still working"
+visibility without push. Out of scope for v1.)
 
 ### 11.2 Brand surface
 
@@ -340,20 +350,17 @@ silently rotting in audit log is the wrong default.
   agent column so the audit-trail reads "this happened while devbot
   was on vacation."
 
-### 11.3 Channel-plugin dependency
+### 11.3 No dependency on the matrix-channel fork
 
-The "edits don't push" guarantee comes from
-`zekker6/claude-code-channel-matrix` having an `edit_message` tool
-that emits a `m.replace` event. That tool is being added in the
-matrix-channel-fork spec (PR #46). **DND ships AFTER the fork's
-`edit_message` lands upstream** (or as our pinned fork) — otherwise
-"DND" just means "no reply" which leaves the operator with no status
-visibility at all.
+DND ships standalone — silence + rollup needs no plugin-side change.
+The audit log on the website is the operator's "what happened while
+I slept" surface (visible whenever they open the site, no push), and
+the morning rollup is a single `reply` call after the window closes.
 
-If matrix-channel work hasn't landed by the time the rest of this
-branding spec ships, the visual surface (sprite vacation variant,
-hero chrome) ships standalone; the behavioural mute is gated until
-`edit_message` is available.
+A future enhancement, once the matrix-channel fork's `edit_message`
+lands, can swap the silent-reply approach for an
+`edit_message`-to-a-pinned-status pattern (live "still working"
+visibility without push). Out of scope for v1.
 
 ### 11.4 Out of scope
 
