@@ -1,18 +1,16 @@
 # agent-smith
 
-> Your engineering team, running in Kubernetes.
+> **Your secure sandboxed agent workforce — ship in your sleep.**
 
-<img width="764" height="503" alt="image" src="https://github.com/user-attachments/assets/64c9037e-fc46-4212-b3c6-b5400a6123d1" />
+<p>
+  <img src="https://raw.githubusercontent.com/sherodtaylor/agent-smith/main/website/public/sprites/devbot.svg" width="64" alt="DevBot — code agent" />
+  <img src="https://raw.githubusercontent.com/sherodtaylor/agent-smith/main/website/public/sprites/infrabot.svg" width="64" alt="InfraBot — infra agent" />
+</p>
 
-`agent-smith` deploys [Claude Code](https://docs.claude.com/en/docs/claude-code/overview)
-as persistent, long-lived engineering agents inside Kubernetes pods. Each agent has a
-permanent workspace with real cluster credentials, follows the same git workflow as a
-human teammate, and works autonomously until the task is done — feature branches,
-conventional commits, pull requests, review comments addressed, merged.
-
-The current team is two agents — **InfraBot** for k3s/Flux and **DevBot** for code —
-but the container image is parametric: one new `agents/<name>/` directory and you have a
-third teammate.
+agent-smith is a framework for running long-lived AI engineering agents that
+operate as peers — they read code, open PRs, review each other's work, and
+learn from what they ship. Deploy them however you run servers; the reference
+deployment is one Kubernetes StatefulSet per agent.
 
 ---
 
@@ -51,7 +49,9 @@ MCP-capable at the same time:
 
 ---
 
-## How it works
+## Under the hood — reference deployment
+
+*The way we run agent-smith. Yours can be different.*
 
 One image, many agents. The runtime in a single pod looks like this:
 
@@ -89,10 +89,10 @@ second tmux pane is just a plain bash shell for ad-hoc inspection when you `tmux
 plugin via Claude Code's marketplace mechanism, and `setup.sh` writes the per-agent Matrix
 credentials and the sender allowlist to `~/.claude/channels/matrix/`. Every permitted
 message in a joined room becomes a Claude Code prompt for that agent — no separate
-listener, no message queue, no per-room wiring. The 👀 reaction the bot posts on
+listener, no message queue, no per-room wiring. The 👀 reaction the agent posts on
 acknowledgement comes from the same plugin.
 
-**Bots that watch their own PRs.** A `Stop`-hook (`scripts/check-pr-comments.sh`) runs after
+**Agents that watch their own PRs.** A `Stop`-hook (`scripts/check-pr-comments.sh`) runs after
 every turn, queries GitHub for unaddressed review comments on PRs this agent authored, and
 exits `2` to rewake the agent if any are found. The agent then addresses comments without a
 human prompt and posts a one-liner back in `#dev`.
@@ -165,9 +165,9 @@ Sourced from Infisical via ExternalSecrets in the homelab manifests, then handed
 | `AGENT_REPOS` | yes | Space-separated `owner/name` list; cloned to `/workspace/<name>` |
 | `PRIMARY_REPO` | no (default `homelab`) | Repo basename whose checkout becomes the agent's working directory |
 | `MATRIX_HOMESERVER_URL` | yes | e.g. `https://matrix.lab.sherodtaylor.dev` |
-| `MATRIX_ACCESS_TOKEN` | yes | Matrix bot login token |
+| `MATRIX_ACCESS_TOKEN` | yes | Matrix login token for the agent |
 | `MATRIX_BOT_USER_ID` | yes | e.g. `@devbot:lab.sherodtaylor.dev` |
-| `MATRIX_ALLOWED_USERS` | no (default `@sherod:lab.sherodtaylor.dev`) | Comma-separated allowlist of senders the bot reacts to |
+| `MATRIX_ALLOWED_USERS` | no (default `@sherod:lab.sherodtaylor.dev`) | Comma-separated allowlist of senders the agent reacts to |
 | `GITHUB_TOKEN` | yes | **Placeholder** proxy token (`proxy-token-github`); iron-proxy swaps in the real PAT at egress |
 | `IRON_PROXY_CA_CRT` | yes | iron-proxy MITM CA; installed into the system trust store |
 
@@ -320,7 +320,7 @@ kubectl exec -it -n agents <agent>-0 -- tmux attach -t main
 exposed for remote drive-in. Typing into it is fine for ad-hoc prompts, but the Matrix
 plugin is the normal input path. Because the same process runs with `--remote-control
 <agent>`, the Claude desktop/web app can connect to that named session and you can drive
-the bot from your laptop without going through Matrix at all.
+the agent from your laptop without going through Matrix at all.
 
 **Pane 1** is just a plain `bash` shell in the same `${WORKDIR}` — useful for `kubectl`,
 `git status`, `flux logs`, peeking at `~/.claude/`, anything that doesn't belong in the
@@ -410,11 +410,11 @@ regenerates the file on init.
 ## Agent behaviour
 
 The behavioural contract lives in [`agents/_shared/CLAUDE.md`](agents/_shared/CLAUDE.md)
-and the per-agent files. Highlights worth knowing when you watch the bots work:
+and the per-agent files. Highlights worth knowing when you watch the agents work:
 
-- **Response triggers.** A bot responds when (a) its name appears in the message, (b) the
+- **Response triggers.** An agent responds when (a) its name appears in the message, (b) the
   sender is `@sherod:lab.sherodtaylor.dev`, or (c) the message is a threaded reply to
-  something the bot said. All other messages get a `👀` reaction and silence.
+  something the agent said. All other messages get a `👀` reaction and silence.
 - **Loop prevention.** Agents never reply to each other unless directly named; max three
   consecutive messages per room without a human in between.
 - **Cross-agent PR review.** After opening a PR, the author publishes
@@ -437,7 +437,7 @@ For the full set of rules see `agents/_shared/CLAUDE.md`; for per-agent behaviou
 1. Create `agents/<name>/` with `CLAUDE.md`, `mcp.json`, and an optional `subagents/` dir.
    Use an existing agent as a template — match the section structure.
 2. Build and push the image (CI does this automatically on merge to `main`).
-3. Provision Matrix credentials for the new bot user in Infisical (`MATRIX_ACCESS_TOKEN`,
+3. Provision Matrix credentials for the new agent user in Infisical (`MATRIX_ACCESS_TOKEN`,
    `MATRIX_BOT_USER_ID`).
 4. Add the new `StatefulSet` in `sherodtaylor/homelab/k8s/apps/agent-smith/` referencing the
    same image with the new `AGENT_NAME` and the right `AGENT_REPOS`.
