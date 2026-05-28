@@ -21,6 +21,57 @@ cut-a-release procedure.
 
 ---
 
+## [0.2.6] - 2026-05-28
+
+Patch release. Image-only change — chart templates unchanged from 0.2.5.
+
+### Changed
+
+- **`scripts/reconcile-plugins.sh` now always uninstalls + reinstalls every
+  enabled plugin on each invocation.** Claude Code's `enabledPlugins`
+  schema only accepts `true`/`false` — there is no settings-level way
+  to pin GitHub-source plugins to a specific version, so an install of
+  e.g. `matrix@claude-code-channel-matrix` would stick at the cached
+  version forever, even after the marketplace published a fix. With
+  this change a pod bounce becomes the deploy mechanism for upstream
+  plugin updates: each bounce wipes the cached install and pulls
+  whatever's at HEAD of the marketplace.
+
+  Safety: if a marketplace's `add` or `update` call fails in Phase 1
+  (network blip), Phase 2 skips reinstall for any plugin sourced from
+  that marketplace, preserving the cached install. The pod never
+  boots with no plugin at all due to a transient registry outage.
+
+  Trade-off: every enabled plugin (including `superpowers`) reinstalls
+  on every bounce. The extra round-trip is the cost of avoiding a
+  parallel pin schema Claude Code doesn't honor. Per-plugin opt-out
+  can be added later if startup time grows uncomfortably.
+
+  ([#75](https://github.com/sherodtaylor/agent-smith/pull/75))
+
+### Deploy story
+
+This release unblocks rollout of `matrix@claude-code-channel-matrix`
+v0.7.1, which carries three upstream fixes that pods on v0.2.5 cannot
+pick up:
+
+- `reply` / `react` tools now echo the message body / event_id in their
+  MCP result (so Claude Code mobile renders the sent content instead of
+  bare `"sent"` /  `"reacted"`).
+- Typing indicator only fires when the inbound message targets this
+  bot — silent on messages aimed at other agents in the room.
+- Outbound bot replies use `msgtype: m.text` (was `m.notice`), which
+  client-side notice filters in some Matrix clients had been
+  suppressing. Bot loop prevention is already handled by the existing
+  `shouldForwardEvent` gate, so the spec rationale for `m.notice`
+  doesn't apply here.
+
+After upgrading the HelmRelease to 0.2.6, the next pod bounce will
+reinstall the matrix plugin from the marketplace and pick up 0.7.1
+automatically.
+
+---
+
 ## [0.2.5] - 2026-05-28
 
 Patch release. Image-only change — chart templates unchanged from 0.2.4.
