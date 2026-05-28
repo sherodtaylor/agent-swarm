@@ -59,7 +59,24 @@ render_fails() {
 
 echo "[test-chart-render] harness loaded"
 
-# Real cases land in subsequent task commits.
+# ── Case: new-shape values render with a single agent in the array ──
+echo "[case] new-shape single agent renders"
+cat > /tmp/values-new-single.yaml <<'EOF'
+image:
+  repository: ghcr.io/sherodtaylor/agent-smith
+  tag: v0.2.0
+  pullPolicy: IfNotPresent
+agents:
+  - name: testbot
+    existingSecret: testbot-secrets
+    matrix:
+      botUserId: "@testbot:example.com"
+      allowedUsers: "@admin:example.com"
+    agentRepos: ["sherodtaylor/homelab"]
+    primaryRepo: homelab
+EOF
+out=$(render /tmp/values-new-single.yaml)
+assert_contains "$out" 'name: testbot' "single-agent: StatefulSet/SA name interpolated"
 
 echo "[test-chart-render] summary: pass=${PASS} fail=${FAIL}"
 exit $FAIL
