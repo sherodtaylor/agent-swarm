@@ -2,6 +2,24 @@
 import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import TmuxStatusBar from '../../components/TmuxStatusBar.astro';
+import SpriteDevbot from '../../components/SpriteDevbot.astro';
+import SpriteInfrabot from '../../components/SpriteInfrabot.astro';
+import statusData from '../../data/crew-status.json';
+
+type SpriteState = 'active' | 'vacation' | 'error';
+
+interface CrewAgent {
+  name?: string;
+  state?: string;
+}
+
+function stateOf(name: string): SpriteState {
+  const agents = (statusData.agents ?? []) as CrewAgent[];
+  const entry = agents.find((a) => a.name?.toLowerCase() === name.toLowerCase());
+  const raw = entry?.state;
+  if (raw === 'vacation' || raw === 'error') return raw;
+  return 'active';
+}
 
 const entries = (await getCollection('log'))
   .sort((a, b) => +b.data.timestamp - +a.data.timestamp);
@@ -19,30 +37,40 @@ const rendered = await Promise.all(
     event; expand for context.
   </p>
   <ul class="log-feed">
-    {rendered.map(({ entry: e, Content }, i) => (
-      <li class:list={[{ 'pulse-new': i === 0 }]}>
-        <details>
-          <summary>
-            <time datetime={e.data.timestamp.toISOString()}>{e.data.timestamp.toISOString().replace(/\.\d{3}/, '')}</time>{' '}
-            <span class="agent">{e.data.agent}</span>{' '}
-            <span class="kind">{e.data.kind.replace('_', ' ')}</span>{' '}
-            <span class="run">run={e.data.run_id.slice(0, 6)}</span>{' '}
-            <span class="summary">{e.data.summary}</span>
-            {e.data.link && <a href={e.data.link} class="link">[link]</a>}
-          </summary>
-          <div class="body">
-            <Content />
-          </div>
-        </details>
-      </li>
-    ))}
+    {rendered.map(({ entry: e, Content }, i) => {
+      const agentState = stateOf(e.data.agent);
+      return (
+        <li class:list={[{ 'pulse-new': i === 0 }]}>
+          <details>
+            <summary>
+              <time datetime={e.data.timestamp.toISOString()}>{e.data.timestamp.toISOString().replace(/\.\d{3}/, '')}</time>{' '}
+              <span class="agent">
+                {e.data.agent === 'devbot'   && <SpriteDevbot   state={agentState} size={16} />}
+                {e.data.agent === 'infrabot' && <SpriteInfrabot state={agentState} size={16} />}
+                <span class="name">{e.data.agent}</span>
+                {agentState === 'vacation' && <span class="dnd-glyph" aria-label="quiet hours">💤</span>}
+              </span>{' '}
+              <span class="kind">{e.data.kind.replace('_', ' ')}</span>{' '}
+              <span class="run">run={e.data.run_id.slice(0, 6)}</span>{' '}
+              <span class="summary">{e.data.summary}</span>
+              {e.data.link && <a href={e.data.link} class="link">[link]</a>}
+            </summary>
+            <div class="body">
+              <Content />
+            </div>
+          </details>
+        </li>
+      );
+    })}
   </ul>
 </BaseLayout>
 
 <style>
   .log-feed   { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-2); font-family: var(--font-mono); font-size: var(--fs-mono); }
   .log-feed time    { color: var(--fg-muted); }
-  .log-feed .agent  { color: var(--fg); }
+  .log-feed .agent  { color: var(--fg); display: inline-flex; align-items: center; gap: var(--space-1); }
+  .log-feed .agent .sprite { vertical-align: middle; }
+  .log-feed .dnd-glyph { color: var(--accent-warn); font-size: 0.85em; }
   .log-feed .kind   { color: var(--accent-warn); }
   .log-feed .run    { color: var(--accent); }
   .log-feed .summary{ color: var(--fg-muted); }
