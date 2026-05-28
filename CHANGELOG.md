@@ -19,6 +19,25 @@ cut-a-release procedure.
 
 ## [Unreleased]
 
+---
+
+## [0.2.3] - 2026-05-28
+
+Patch release. Unblocks every v0.2.x deployment whose persona moved to a
+mounted ConfigMap, and ships the previously-prepped 0.2.2 features in the
+same cut.
+
+### Fixed
+
+- **`scripts/setup.sh` guard**: the upfront FATAL check required the legacy
+  baked `${APP_DIR}/agents/${AGENT_NAME}` directory and crashed before the
+  v0.2.0 ConfigMap-fallback ever ran. Every v0.2.x deploy using the persona
+  CM hit `[setup] FATAL: no AgentConfig at /opt/agent-smith/agents/<name>`
+  even when the persona CM was mounted correctly. Guard now passes when
+  **either** `${PERSONA_DIR}/CLAUDE.md` is mounted or the legacy `AGENT_DIR`
+  exists. `mcp.json` legacy fallback also guarded with `-f` so persona CMs
+  that omit `mcp.json` don't crash. ([#67](https://github.com/sherodtaylor/agent-smith/pull/67))
+
 ### Added
 
 - Quiet hours / DND mode — operator can `/dnd on [until HH:MM]` on Matrix or
