@@ -140,5 +140,12 @@ ing_count=$(echo "$out" | grep -cE '^kind: Ingress$' || true)
 assert_eq "$svc_count" "0" "reauth off: no Services"
 assert_eq "$ing_count" "0" "reauth off: no Ingresses"
 
+# ── Case: shared ConfigMap is rendered as a single instance ──
+echo "[case] shared ConfigMap"
+out=$(render /tmp/values-two-agents.yaml)
+shared_cm_count=$(echo "$out" | grep -cE '# Source: agent-smith/templates/configmap-shared.yaml' || true)
+assert_eq "$shared_cm_count" "1" "shared CM: exactly 1 instance (not per agent)"
+assert_contains "$out" 'kind: ConfigMap' "shared CM: kind ConfigMap present"
+
 echo "[test-chart-render] summary: pass=${PASS} fail=${FAIL}"
 exit $FAIL
