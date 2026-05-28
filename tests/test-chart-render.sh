@@ -230,6 +230,29 @@ EOF
 err=$(render_fails /tmp/values-empty.yaml)
 assert_contains "$err" 'Set either .Values.agents .* or .Values.agentName' "empty: explanatory error"
 
+# ── Case: serviceAccount.create=false suppresses chart-owned SAs ──
+echo "[case] serviceAccount.create=false"
+cat > /tmp/values-sa-off.yaml <<'EOF'
+image: { repository: ghcr.io/sherodtaylor/agent-smith, tag: v0.2.1 }
+serviceAccount: { create: false }
+rbac: { create: false }
+agents:
+  - name: alpha
+    existingSecret: alpha-secrets
+    matrix: { botUserId: "@alpha:example.com" }
+    agentRepos: [example/repo]
+    primaryRepo: repo
+EOF
+out=$(render /tmp/values-sa-off.yaml)
+sa_count=$(echo "$out" | grep -cE '^kind: ServiceAccount' || true)
+cr_count=$(echo "$out" | grep -cE '^kind: ClusterRole$' || true)
+crb_count=$(echo "$out" | grep -cE '^kind: ClusterRoleBinding' || true)
+assert_eq "$sa_count" "0" "serviceAccount.create=false: zero SAs"
+assert_eq "$cr_count" "0" "rbac.create=false: zero ClusterRoles"
+assert_eq "$crb_count" "0" "rbac.create=false: zero ClusterRoleBindings"
+# StatefulSet still emits + references the externally-owned SA by name
+assert_contains "$out" 'serviceAccountName: alpha' "serviceAccount.create=false: StatefulSet still references SA by name"
+
 # ── Case: per-agent image.tag override + fleet-default fallback ──
 echo "[case] per-agent image.tag override"
 cat > /tmp/values-tag-override.yaml <<'EOF'

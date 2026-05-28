@@ -19,6 +19,22 @@ cut-a-release procedure.
 
 ## [Unreleased]
 
+### Added
+
+- **`serviceAccount.create` value** — when `false`, the chart skips
+  per-agent ServiceAccount emission. Required for consumers (homelab)
+  that manage their own ServiceAccounts via a separate Kustomize
+  manifest. Default `true` for stand-alone installs. Pairs with the
+  existing `rbac.create: false` to fully delegate SA + RBAC to an
+  external system; the StatefulSet still references the externally-
+  owned SA by name (`serviceAccountName: {{ .agent.name }}`).
+
+### Test coverage
+
+- `tests/test-chart-render.sh`: new case "serviceAccount.create=false"
+  pins the contract (zero SAs/CRs/CRBs emitted; StatefulSet still
+  references the named SA). Suite at 33 passes.
+
 ---
 
 ## [0.2.0] - 2026-05-28
