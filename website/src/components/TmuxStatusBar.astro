@@ -4,9 +4,23 @@ import statusData from '../data/crew-status.json';
 interface Props { sessionName?: string; }
 const { sessionName = '0:main' } = Astro.props;
 
-const agents = statusData.agents ?? [];
+interface CrewAgent {
+  name?: string;
+  state?: string;
+  dnd_until?: string | null;
+}
+
+const agents = (statusData.agents ?? []) as CrewAgent[];
 const lastRelease = statusData.last_release ?? '—';
 const prsThisWeek = statusData.prs_this_week ?? 0;
+
+const dndAgents = agents.filter((a) => a.state === 'vacation');
+const dndLabel = dndAgents
+  .map((a) => {
+    const until = a.dnd_until ? ` until ${a.dnd_until}` : '';
+    return `${a.name ?? 'agent'} 💤${until}`;
+  })
+  .join(' · ');
 ---
 <div class="tmux-status">
   <span class="left">
@@ -17,6 +31,7 @@ const prsThisWeek = statusData.prs_this_week ?? 0;
     <span class="dot">●</span> {agents.length} agents ·
     PRs this week: {prsThisWeek} ·
     last release: {lastRelease}
+    {dndLabel && <> · <span class="dnd">{dndLabel}</span></>}
   </span>
 </div>
 
@@ -31,6 +46,7 @@ const prsThisWeek = statusData.prs_this_week ?? 0;
   .bracket { color: color-mix(in srgb, var(--fg-muted) 60%, transparent); }
   .dot     { color: var(--accent); }
   .right   { color: var(--fg); }
+  .dnd     { color: var(--accent-warn); }
   @media (max-width: 640px) {
     .tmux-status { font-size: 11px; flex-wrap: wrap; gap: var(--space-1); }
   }

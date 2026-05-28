@@ -28,6 +28,8 @@ export async function buildCrewStatus(client: GhClient, { now }: BuildOpts) {
       ...a,
       last_pr: lastPR ? { number: lastPR.number, title: lastPR.title, merged_at: lastPR.merged_at, repo: lastPR.repo } : null,
       last_seen: lastPR ? lastPR.merged_at : null,
+      state: 'active' as const,
+      dnd_until: null,
     };
   });
 

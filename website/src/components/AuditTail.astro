@@ -1,5 +1,23 @@
 ---
 import { getCollection } from 'astro:content';
+import SpriteDevbot from './SpriteDevbot.astro';
+import SpriteInfrabot from './SpriteInfrabot.astro';
+import statusData from '../data/crew-status.json';
+
+type SpriteState = 'active' | 'vacation' | 'error';
+
+interface CrewAgent {
+  name?: string;
+  state?: string;
+}
+
+function stateOf(name: string): SpriteState {
+  const agents = (statusData.agents ?? []) as CrewAgent[];
+  const entry = agents.find((a) => a.name?.toLowerCase() === name.toLowerCase());
+  const raw = entry?.state;
+  if (raw === 'vacation' || raw === 'error') return raw;
+  return 'active';
+}
 
 interface Props { limit?: number; }
 const { limit = 5 } = Astro.props;
@@ -13,15 +31,23 @@ const entries = (await getCollection('log'))
     <span class="prompt">$</span> tail -f #audit
   </div>
   <ul>
-    {entries.map((e, i) => (
-      <li class:list={[{ 'pulse-new': i === 0 }]}>
-        <time datetime={e.data.timestamp.toISOString()}>{e.data.timestamp.toISOString().replace(/\.\d{3}/, '')}</time>
-        <span class="agent">{e.data.agent}</span>
-        <span class="kind">{e.data.kind.replace('_', ' ')}</span>
-        <span class="run">run={e.data.run_id.slice(0, 6)}</span>
-        <span class="summary">{e.data.summary}</span>
-      </li>
-    ))}
+    {entries.map((e, i) => {
+      const agentState = stateOf(e.data.agent);
+      return (
+        <li class:list={[{ 'pulse-new': i === 0 }]}>
+          <time datetime={e.data.timestamp.toISOString()}>{e.data.timestamp.toISOString().replace(/\.\d{3}/, '')}</time>
+          <span class="agent">
+            {e.data.agent === 'devbot'   && <SpriteDevbot   state={agentState} size={16} />}
+            {e.data.agent === 'infrabot' && <SpriteInfrabot state={agentState} size={16} />}
+            <span class="name">{e.data.agent}</span>
+            {agentState === 'vacation' && <span class="dnd-glyph" aria-label="quiet hours">💤</span>}
+          </span>
+          <span class="kind">{e.data.kind.replace('_', ' ')}</span>
+          <span class="run">run={e.data.run_id.slice(0, 6)}</span>
+          <span class="summary">{e.data.summary}</span>
+        </li>
+      );
+    })}
   </ul>
 </section>
 
@@ -32,7 +58,9 @@ const entries = (await getCollection('log'))
   ul            { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-2); }
   li            { display: grid; grid-template-columns: auto auto auto auto 1fr; gap: var(--space-3); align-items: baseline; }
   time          { color: var(--fg-muted); }
-  .agent        { color: var(--fg); }
+  .agent        { color: var(--fg); display: inline-flex; align-items: center; gap: var(--space-1); }
+  .agent .sprite { vertical-align: middle; }
+  .dnd-glyph    { color: var(--accent-warn); font-size: 0.85em; }
   .kind         { color: var(--accent-warn); }
   .run          { color: var(--accent); }
   .summary      { color: var(--fg-muted); }
