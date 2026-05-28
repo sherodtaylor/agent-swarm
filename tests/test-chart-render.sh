@@ -78,5 +78,29 @@ EOF
 out=$(render /tmp/values-new-single.yaml)
 assert_contains "$out" 'name: testbot' "single-agent: StatefulSet/SA name interpolated"
 
+# ── Case: two agents in array → two StatefulSets ──
+echo "[case] two-agent fan-out"
+cat > /tmp/values-two-agents.yaml <<'EOF'
+image:
+  repository: ghcr.io/sherodtaylor/agent-smith
+  tag: v0.2.0
+agents:
+  - name: alpha
+    existingSecret: alpha-secrets
+    matrix: { botUserId: "@alpha:example.com" }
+    agentRepos: [example/repo-a]
+    primaryRepo: repo-a
+  - name: beta
+    existingSecret: beta-secrets
+    matrix: { botUserId: "@beta:example.com" }
+    agentRepos: [example/repo-b]
+    primaryRepo: repo-b
+EOF
+out=$(render /tmp/values-two-agents.yaml)
+sts_count=$(echo "$out" | grep -cE '^kind: StatefulSet' || true)
+assert_eq "$sts_count" "2" "two-agent: exactly 2 StatefulSets emitted"
+assert_contains "$out" 'name: alpha' "two-agent: alpha StatefulSet present"
+assert_contains "$out" 'name: beta'  "two-agent: beta StatefulSet present"
+
 echo "[test-chart-render] summary: pass=${PASS} fail=${FAIL}"
 exit $FAIL

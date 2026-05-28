@@ -1,3 +1,5 @@
+{{/* TODO Task 4: rewrite for agents array */}}
+{{- if false }}
 {{- if and .Values.rbac.create .Values.serviceAccount.create -}}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -23,3 +25,4 @@ subjects:
     name: {{ include "agent-smith.serviceAccountName" . }}
     namespace: {{ .Release.Namespace }}
 {{- end -}}
+{{- end }}
