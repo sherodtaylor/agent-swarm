@@ -92,6 +92,12 @@ spec:
             - name: REAUTH_TUNNEL_HOST
               value: {{ printf "%s-shell%s" $agent.name $root.Values.reauth.tunnel.hostSuffix | quote }}
             {{- end }}
+            {{- if $root.Values.quietHours.window }}
+            - name: QUIET_HOURS
+              value: {{ $root.Values.quietHours.window | quote }}
+            - name: QUIET_HOURS_TZ
+              value: {{ $root.Values.quietHours.tz | quote }}
+            {{- end }}
             {{- with $root.Values.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
