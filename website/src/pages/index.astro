@@ -17,7 +17,7 @@ const asciiDraw = `${import.meta.env.BASE_URL}/animations/ascii-draw.json`.repla
     ctas={[
       { label: '$ read the docs ›', href: `${import.meta.env.BASE_URL}/getting-started` },
       { label: '$ view on github ›', href: 'https://github.com/sherodtaylor/agent-smith' },
-      { label: '$ meet the crew ↓', href: '#meet-the-crew' },
+      { label: '$ ls crew ↓', href: '#ls-crew' },
     ]}
   />
 
@@ -39,6 +39,8 @@ const asciiDraw = `${import.meta.env.BASE_URL}/animations/ascii-draw.json`.repla
     </p>
   </section>
 
+  <MeetTheCrew />
+
   <section class="capabilities" style="margin-top: var(--space-20);">
     <h2>$ ls capabilities</h2>
     <ul class="caps measure">
@@ -54,8 +56,6 @@ const asciiDraw = `${import.meta.env.BASE_URL}/animations/ascii-draw.json`.repla
       is always there.
     </p>
   </section>
-
-  <MeetTheCrew />
 
   <section class="architecture" style="margin-top: var(--space-20);">
     <h2>$ describe reference deployment</h2>
