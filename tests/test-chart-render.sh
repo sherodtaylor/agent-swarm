@@ -147,5 +147,38 @@ shared_cm_count=$(echo "$out" | grep -cE '# Source: agent-smith/templates/config
 assert_eq "$shared_cm_count" "1" "shared CM: exactly 1 instance (not per agent)"
 assert_contains "$out" 'kind: ConfigMap' "shared CM: kind ConfigMap present"
 
+# ── Case: per-agent persona ConfigMap rendered (no configMapRef) ──
+echo "[case] persona ConfigMap chart-rendered"
+out=$(render /tmp/values-two-agents.yaml)
+# Count rendered persona templates via Helm's Source comment, not resource
+# name (the name also appears in StatefulSet volume refs and the
+# checksum annotation Task 8 will add). Helm emits one # Source: per
+# document boundary, so 2 agents → 2 Source lines from this template.
+persona_renders=$(echo "$out" | grep -cE '^# Source: agent-smith/templates/configmap-persona.yaml' || true)
+assert_eq "$persona_renders" "2" "persona CM: configmap-persona.yaml renders for each agent (range emits both agents inside)"
+# Both agent persona CMs should be in the output by metadata.name
+assert_contains "$out" 'name: agent-smith-persona-alpha' "persona CM: alpha rendered"
+assert_contains "$out" 'name: agent-smith-persona-beta'  "persona CM: beta rendered"
+
+# ── Case: configMapRef provided → no chart-rendered persona CM for that agent ──
+echo "[case] configMapRef override skips chart-rendered CM"
+cat > /tmp/values-configmapref.yaml <<'EOF'
+image: { repository: ghcr.io/sherodtaylor/agent-smith, tag: v0.2.0 }
+agents:
+  - name: alpha
+    existingSecret: alpha-secrets
+    configMapRef: alpha-persona-v3
+    matrix: { botUserId: "@alpha:example.com" }
+    agentRepos: [example/repo]
+    primaryRepo: repo
+EOF
+out=$(render /tmp/values-configmapref.yaml)
+# The configmap-persona.yaml template still renders (Helm emits a # Source line)
+# but the range body is entirely skipped because configMapRef is set →
+# zero ConfigMaps named agent-smith-persona-alpha.
+chart_persona_alpha=$(echo "$out" | grep -cE 'name: agent-smith-persona-alpha$' || true)
+assert_eq "$chart_persona_alpha" "0" "configMapRef: chart-rendered persona CM skipped"
+assert_contains "$out" 'name: alpha-persona-v3' "configMapRef: mount references operator-supplied name"
+
 echo "[test-chart-render] summary: pass=${PASS} fail=${FAIL}"
 exit $FAIL
