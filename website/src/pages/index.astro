@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import TmuxStatusBar from '../components/TmuxStatusBar.astro';
 import HeroPane from '../components/HeroPane.astro';
+import MeetTheCrew from '../components/MeetTheCrew.astro';
 import AuditTail from '../components/AuditTail.astro';
 import AsciiBox from '../components/AsciiBox.astro';
 import LottiePlayer from '../components/LottiePlayer.astro';
@@ -54,8 +55,11 @@ const asciiDraw = `${import.meta.env.BASE_URL}/animations/ascii-draw.json`.repla
     </p>
   </section>
 
+  <MeetTheCrew />
+
   <section class="architecture" style="margin-top: var(--space-20);">
-    <h2>$ describe runtime</h2>
+    <h2>$ describe reference deployment</h2>
+    <p class="measure" style="color: var(--fg-muted);"><em>The way we run agent-smith. Yours can be different.</em></p>
     <p class="measure">
       One image, many agents. The runtime in a single pod looks like this:
     </p>
