@@ -19,29 +19,50 @@ cut-a-release procedure.
 
 ## [Unreleased]
 
+---
+
+## [0.2.0] - 2026-05-28
+
+Major chart refactor ([#59](https://github.com/sherodtaylor/agent-smith/pull/59)).
+One Helm release can now deploy N agents from a values-side array;
+persona content moves from baked-into-image to mounted ConfigMaps;
+each agent has independent staging knobs for canary rolls.
+
 ### Added
 
 - **Chart `agents: [...]` array shape** — one HelmRelease can now
   deploy N agents from a values-side array. Replaces the prior
-  one-HelmRelease-per-agent model.
-- **Per-agent persona via mounted ConfigMaps** — `CLAUDE.md` + `mcp.json`
-  no longer need to be baked into the image. Hybrid sourcing: chart
-  renders a default ConfigMap from `charts/agent-smith/agents/<name>/`
-  bundled content; agents set `configMapRef: <name>` to override with
-  an operator-supplied ConfigMap. Persona iteration drops from ~5-10min
-  (image rebuild) to ~90s (ConfigMap edit + pod restart).
+  one-HelmRelease-per-agent model. Adding an agent goes from
+  duplicating a HelmRelease + editing 4 fields, to appending one
+  array entry.
+- **Per-agent persona via mounted ConfigMaps** — `CLAUDE.md` +
+  `mcp.json` no longer need to be baked into the image. Hybrid
+  sourcing: the chart renders a default ConfigMap from bundled
+  `charts/agent-smith/agents/<name>/` content; agents set
+  `configMapRef: <name>` to override with an operator-supplied
+  ConfigMap. Persona iteration drops from ~5–10 min (image rebuild
+  + chart release + Flux reconcile + pod roll) to ~90 s
+  (ConfigMap edit + Flux reconcile + pod restart).
 - **Per-agent staging knobs** — each agent entry accepts an optional
-  `image.tag` (defaults to fleet-wide `.image.tag`) and `configMapRef`
-  (defaults to chart-rendered persona CM). Canary one agent without
-  splitting the fleet across HelmReleases.
+  `image.tag` (defaults to fleet-wide `.image.tag`) and
+  `configMapRef` (defaults to chart-rendered persona CM). Canary
+  one agent on a new image or persona without splitting the fleet
+  across HelmReleases. See `docs/runbooks/release.md` —
+  "Staged release (per-agent canary)" section.
 - **Shared `agent-smith-shared` ConfigMap** — one instance regardless
   of agent count; carries cross-cutting `_shared/CLAUDE.md` content
   that `setup.sh` concatenates with the per-agent persona.
+- **Bundled example personas** — `charts/agent-smith/agents/example-infrabot/`
+  and `charts/agent-smith/agents/example-devbot/` ship as
+  cluster-agnostic templates for users adopting the chart. Production
+  operators replace via per-agent `configMapRef` pointing at their
+  own ConfigMaps; the bundled examples are documentation, not
+  deployable content.
 - **`tests/test-chart-render.sh`** — bash + helm + grep smoke harness
   covering 11 cases (29 assertions): single-agent, two-agent fan-out,
   RBAC fan-out, reauth on/off, persona CM rendering, configMapRef
   override, checksum annotations, legacy shim, both-set error,
-  empty error, image.tag override + fallback.
+  empty error, image.tag override + fallback. Runs offline.
 
 ### Changed
 
@@ -55,24 +76,56 @@ cut-a-release procedure.
   `/etc/agent-smith/{shared,persona}/` mount paths when present;
   falls back to baked-in `/opt/agent-smith/agents/<name>/` paths
   when the volumes aren't mounted (older chart versions).
-- **Chart version** — `0.2.0` (minor; the deprecation shim keeps
-  legacy `agentName:` consumers working).
+- **Chart templates** — `statefulset.yaml`, `serviceaccount.yaml`,
+  `rbac.yaml`, `service-reauth.yaml`, `ingress-reauth.yaml` all wrap
+  their resources in `{{- range .Values.agents }}`. ClusterRole
+  becomes a singleton (`agent-smith-base`); N per-agent
+  ClusterRoleBindings.
+- **`docs/architecture.md`** — new "Helm chart shape (v0.2.0+)"
+  section describing the fan-out + shared resources + staging knobs.
+- **`docs/runbooks/adding-agent.md`** — rewritten for the array
+  shape: six-step procedure (Infisical secret → ExternalSecret →
+  persona (bundled or operator-supplied) → append to fleet HelmRelease
+  → PR → verify).
+- **`docs/runbooks/release.md`** — new "Staged release (per-agent
+  canary)" section: image.tag override for binary canary,
+  `configMapRef` override for persona canary, rollback by removing
+  the override.
+
+### Removed
+
+- **Top-level `agents/infrabot/` and `agents/devbot/`** — Sherod's
+  operator-specific persona content stripped from the public chart
+  repo. Production personas now live in operator-side ConfigMap
+  manifests referenced via `configMapRef`. The chart ships only
+  generic `example-*` personas.
 
 ### Deprecated
 
-- **Top-level single-agent shape** (`agentName: foo` + sibling fields).
-  The chart accepts it during `v0.2.x` and `v0.3.x` via a synthetic
-  one-element array constructed by `agent-smith.agentList`. Removed
-  in `v0.4.0`. Migrate to `agents: [{name: foo, ...}]`.
+- **Top-level single-agent shape** (`agentName: foo` + sibling
+  fields). The chart accepts it during `v0.2.x` and `v0.3.x` via a
+  synthetic one-element array constructed by
+  `agent-smith.agentList`. Removed in `v0.4.0`. Migrate to
+  `agents: [{name: foo, ...}]`.
 
 ### Migration
 
-- Homelab consumer-side migration in a follow-up PR. Two-phase rollout
-  preserves PVC identity (StatefulSet `metadata.name` stays
-  `<agent-name>` — no release-name prefix), so existing
-  `home-<agent>-0` + `workspace-<agent>-0` PVCs transfer
-  transparently between the per-HR-per-agent shape and the new
-  fleet HelmRelease.
+Consumer-side migration (homelab) ships in a follow-up PR. Two-phase
+rollout preserves PVC identity because the StatefulSet
+`metadata.name` stays `<agent-name>` (no release-name prefix), so
+existing `home-<agent>-0` + `workspace-<agent>-0` PVCs transfer
+transparently between the per-HR-per-agent shape and the new fleet
+HelmRelease.
+
+1. **Phase 1 (canary)**: new fleet HelmRelease with `agents: [{name: devbot, ...}]`;
+   suspend old `devbot-helmrelease.yaml`. Observe ~24 h.
+2. **Phase 2 (full)**: append `infrabot` to the fleet array; suspend
+   old `infrabot-helmrelease.yaml`. Observe.
+3. **Cleanup**: delete both suspended legacy HelmReleases after the
+   fleet is stable.
+
+**Rollback at either phase**: re-enable the suspended legacy
+HelmRelease.
 
 ---
 
