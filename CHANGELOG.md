@@ -19,9 +19,13 @@ cut-a-release procedure.
 
 ## [Unreleased]
 
+---
+
+## [0.1.24] - 2026-05-28
+
 ### Added
 
-- **Declarative plugin reconciler** —
+- **Declarative plugin reconciler** ([#54](https://github.com/sherodtaylor/agent-smith/pull/54)) —
   `agents/_shared/settings.json.enabledPlugins` is now the source of
   truth for plugin versions (value shape: `{ "version": "X.Y.Z" }`,
   with plain `true` still accepted as "install-if-missing, no version
