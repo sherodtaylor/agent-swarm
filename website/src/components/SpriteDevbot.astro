@@ -3,7 +3,7 @@ type SpriteState = 'active' | 'vacation' | 'error';
 interface Props { state?: SpriteState; size?: number; ariaLabel?: string; }
 const { state = 'active', size = 64, ariaLabel } = Astro.props;
 const file = state === 'active' ? 'devbot.svg' : `devbot-${state}.svg`;
-const src = `${import.meta.env.BASE_URL}sprites/${file}`;
+const src = `${import.meta.env.BASE_URL}/sprites/${file}`;
 const label = ariaLabel ?? `DevBot — code agent (${state})`;
 ---
 <img src={src} width={size} height={size} alt={label} class:list={['sprite', state]} loading="lazy" />
