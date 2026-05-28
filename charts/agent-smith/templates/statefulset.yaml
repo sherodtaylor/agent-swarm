@@ -23,6 +23,9 @@ spec:
       labels:
         {{- include "agent-smith.labels" $root | nindent 8 }}
         agent-smith.io/agent: {{ $agent.name }}
+      annotations:
+        checksum/persona-{{ $agent.name }}: {{ include (print $root.Template.BasePath "/configmap-persona.yaml") $root | sha256sum }}
+        checksum/shared: {{ include (print $root.Template.BasePath "/configmap-shared.yaml") $root | sha256sum }}
     spec:
       serviceAccountName: {{ $agent.name }}
       {{- if $root.Values.ironProxy.enabled }}

@@ -180,5 +180,12 @@ chart_persona_alpha=$(echo "$out" | grep -cE 'name: agent-smith-persona-alpha$' 
 assert_eq "$chart_persona_alpha" "0" "configMapRef: chart-rendered persona CM skipped"
 assert_contains "$out" 'name: alpha-persona-v3' "configMapRef: mount references operator-supplied name"
 
+# ── Case: persona/shared checksum annotations on the pod template ──
+echo "[case] checksum annotations"
+out=$(render /tmp/values-two-agents.yaml)
+assert_contains "$out" 'checksum/persona-alpha:' "checksum: alpha persona annotation"
+assert_contains "$out" 'checksum/persona-beta:'  "checksum: beta persona annotation"
+assert_contains "$out" 'checksum/shared:'         "checksum: shared annotation"
+
 echo "[test-chart-render] summary: pass=${PASS} fail=${FAIL}"
 exit $FAIL
