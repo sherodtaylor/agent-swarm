@@ -17,6 +17,7 @@ export default defineConfig({
       disable404Route: true,
       sidebar: [
         { label: 'Getting Started', slug: 'getting-started' },
+        { label: 'Deployment',      slug: 'deployment' },
         { label: 'Architecture',    slug: 'architecture' },
         { label: 'Agents',          slug: 'agents' },
         { label: 'Security',        slug: 'security' },
