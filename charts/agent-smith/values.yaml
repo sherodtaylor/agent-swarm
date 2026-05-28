@@ -57,9 +57,19 @@ resources:
     cpu: "2"
     memory: 4Gi
 
+# Per-agent ServiceAccount creation. The chart fans out one SA per agent
+# entry (named after `agents[i].name`). Set `create: false` when an
+# external system (homelab Kustomize, sealed-secrets, GitOps repo) already
+# manages the per-agent ServiceAccounts and you want the chart to use
+# them by reference without trying to own them. Default `true` for
+# stand-alone installs.
+serviceAccount:
+  create: true
+
 # Cluster-scoped RBAC. The chart ships read-only defaults safe for the
 # infrabot-style observation use case; override for agents that need to
-# mutate the cluster.
+# mutate the cluster. Set `create: false` to suppress the ClusterRole +
+# ClusterRoleBindings when an external system manages them.
 rbac:
   create: true
   rules:
