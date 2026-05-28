@@ -21,6 +21,13 @@ cut-a-release procedure.
 
 ### Added
 
+- Quiet hours / DND mode — operator can `/dnd on [until HH:MM]` on Matrix or
+  set `quietHours.window` in chart values to schedule a recurring window.
+  In DND, replies suppress (or edit_message-route through the matrix-channel
+  fork) and a single rollup posts at window-end. `kind=incident/blocked`
+  overrides. Spec: docs/superpowers/specs/2026-05-28-platform-branding-design.md §11.
+- Pixel-sprite crew portraits (DevBot, InfraBot) with active/vacation/error
+  state variants. Rendered in README, website hero status, /log, MeetTheCrew.
 - **`serviceAccount.create` value** — when `false`, the chart skips
   per-agent ServiceAccount emission. Required for consumers (homelab)
   that manage their own ServiceAccounts via a separate Kustomize

@@ -108,6 +108,15 @@ reauth:
     hostSuffix: ".lab.sherodtaylor.dev"
     tlsSecretName: "lab-wildcard-tls"
 
+# Quiet hours / DND. When set, the agent treats the window as an implicit
+# /dnd on for its duration: replies suppressed (or routed through
+# edit_message if the matrix-channel fork is loaded), with a single rollup
+# reply at window-end. See agents/_shared/CLAUDE.md "Quiet hours / DND /
+# vacation mode" for the full behavior.
+quietHours:
+  window: ""             # e.g. "22:00-08:00"; empty = no schedule
+  tz: "America/New_York" # IANA timezone the window is interpreted in
+
 extraEnv: []
 # - name: FOO
 #   value: bar
