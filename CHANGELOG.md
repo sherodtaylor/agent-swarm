@@ -23,9 +23,9 @@ cut-a-release procedure.
 
 ## [0.2.3] - 2026-05-28
 
-Patch release. Unblocks every v0.2.x deployment whose persona moved to a
-mounted ConfigMap, and ships the previously-prepped 0.2.2 features in the
-same cut.
+Patch release. Unblocks every v0.2.x fleet deployment by fixing two init
+regressions introduced by the 0.2.0 chart refactor, and ships the
+previously-prepped 0.2.2 features in the same cut.
 
 ### Fixed
 
@@ -37,6 +37,14 @@ same cut.
   **either** `${PERSONA_DIR}/CLAUDE.md` is mounted or the legacy `AGENT_DIR`
   exists. `mcp.json` legacy fallback also guarded with `-f` so persona CMs
   that omit `mcp.json` don't crash. ([#67](https://github.com/sherodtaylor/agent-smith/pull/67))
+- **Chart `MATRIX_HOMESERVER_URL` env wiring**: the v0.2.0 refactor lost the
+  StatefulSet env entry for `MATRIX_HOMESERVER_URL`, so `setup.sh` crashed
+  past the previous fix at line 107 with `MATRIX_HOMESERVER_URL: unbound
+  variable`. Chart now emits the env from per-agent
+  `agents[].matrix.homeserverUrl` with fallback to the top-level
+  `.Values.matrix.homeserverUrl` (one fleet = one homeserver). Block is
+  skipped entirely when neither is set so legacy envFrom-only installs keep
+  working. ([#69](https://github.com/sherodtaylor/agent-smith/pull/69))
 
 ### Added
 
