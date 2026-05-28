@@ -21,6 +21,23 @@ cut-a-release procedure.
 
 ---
 
+## [0.2.5] - 2026-05-28
+
+Patch release. Image-only change — chart templates unchanged from 0.2.4.
+
+### Fixed
+
+- **`agents/_shared/settings.json` `enabledPlugins` schema**: values used
+  `{ "version": "x.y.z" }` form which Claude CLI rejects as "Invalid
+  input" — agent refuses to start with the file in place. Changed to
+  plain boolean `true`, matching Claude CLI's own generated format.
+  `reconcile-plugins.sh` already handled both shapes; with `true` it
+  falls into the "install-if-missing, skip drift" branch (versions
+  float to latest at install time, persist on the home PVC across
+  restarts). ([#72](https://github.com/sherodtaylor/agent-smith/pull/72))
+
+---
+
 ## [0.2.4] - 2026-05-28
 
 Republish of 0.2.3 — no source changes. The 0.2.3 OCI tag was force-moved
