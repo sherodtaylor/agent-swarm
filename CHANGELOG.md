@@ -21,6 +21,48 @@ cut-a-release procedure.
 
 ---
 
+## [0.2.7] - 2026-05-29
+
+Minor release. Chart-only change — adds pmbot (product manager agent)
+as a bundled example persona and extends the shared agent base with
+"Working with pmbot" guidance + the mandatory-response rule.
+
+### Added
+
+- **`charts/agent-smith/agents/example-pmbot/`** — bundled example
+  persona for a product-manager agent, mirroring the
+  `example-devbot` / `example-infrabot` pattern. Operators override
+  with their own pmbot persona via `configMapRef` in HelmRelease
+  values. ([#78](https://github.com/sherodtaylor/agent-smith/pull/78))
+- **`charts/agent-smith/agents/_shared/CLAUDE.md` "Working with
+  pmbot" section** — teaches implementation agents
+  (devbot/infrabot/etc.) how to coordinate with a product-manager
+  agent. Captures who owns what (PRDs/roadmap/vision = pmbot;
+  implementation = the other agents; adjudication = operator), when
+  to summon pmbot, when NOT to summon, mention forms, and the
+  cross-agent PR-review extension. Generic across PM-agent
+  personas; operators may override per their own variant.
+- **Mandatory-response rule** — when pmbot leaves a finding on a PR
+  or addresses an implementation agent in `#dev` / `#infra`, the
+  agent must respond before the next merge/escalation point. Three
+  valid responses: push a fix, reply with rationale, or escalate to
+  the operator. **Silent ignore is not allowed.** This is the
+  social contract that makes pmbot's authority real without a
+  GH-level veto.
+
+### Deploy story
+
+This release is the chart-side surface from homelab spec
+`docs/superpowers/specs/2026-05-28-pmbot-agent-design.md`. After
+tagging v0.2.7 and CI publishing the new chart, homelab Phase B
+(plan #47) lands the cluster manifests — ExternalSecret, persona
+ConfigMap, RBAC, fleet HR `agents[]` entry pinning chart to 0.2.7.
+Phase C (Sherod-manual) creates the `@pmbot:lab.sherodtaylor.dev`
+Matrix account and stores its token in Infisical at
+`SWARM_MATRIX_BOT_TOKEN_PMBOT`.
+
+---
+
 ## [0.2.6] - 2026-05-28
 
 Patch release. Image-only change — chart templates unchanged from 0.2.5.
