@@ -122,6 +122,23 @@ jq -Rn --arg allowed "$ALLOWED" \
   > "${CLAUDE_DIR}/channels/matrix/access.json"
 echo "[setup] wrote Matrix channel config"
 
+# Auto-join rooms declared in MATRIX_AUTO_JOIN_ROOMS (comma-separated aliases or IDs).
+# Idempotent: the Matrix join endpoint returns 200 for already-joined rooms.
+if [[ -n "${MATRIX_AUTO_JOIN_ROOMS:-}" ]]; then
+  IFS=',' read -ra _auto_join_rooms <<< "$MATRIX_AUTO_JOIN_ROOMS"
+  for _room in "${_auto_join_rooms[@]}"; do
+    _room="${_room# }"; _room="${_room% }"   # trim leading/trailing spaces
+    [[ -z "$_room" ]] && continue
+    _encoded="${_room/\#/%23}"               # # must be percent-encoded in path
+    _code="$(curl -sS -o /dev/null -w '%{http_code}' \
+      -X POST "${MATRIX_HOMESERVER_URL}/_matrix/client/v3/join/${_encoded}" \
+      -H "Authorization: Bearer ${MATRIX_ACCESS_TOKEN}" \
+      -H 'Content-Type: application/json' \
+      -d '{}' || echo "000")"
+    echo "[setup] auto-join ${_room}: HTTP ${_code}"
+  done
+fi
+
 # git / gh auth — GITHUB_TOKEN is already in the environment, so `gh` uses it
 # automatically. `gh auth login` refuses to run while the env var is set, so we
 # only wire `git` to the token for HTTPS clone/push.
