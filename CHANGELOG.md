@@ -21,6 +21,32 @@ cut-a-release procedure.
 
 ---
 
+## [0.2.8] - 2026-05-30
+
+Patch release. Image-only change — chart templates unchanged from 0.2.7.
+
+### Fixed
+
+- **`scripts/setup.sh`: `mkdir -p ~/.claude` before credential copy on
+  fresh PVC.** On a brand-new home PVC (e.g. a freshly-deployed agent
+  like pmbot-0), the `cp` of `agents/_shared/.credentials.json` into
+  `~/.claude/.credentials.json` failed because the parent directory
+  didn't exist yet. Existing pods (devbot, infrabot) survived because
+  their PVCs already had the directory from prior runs. Added an
+  idempotent `mkdir -p "${CLAUDE_DIR}"` after the iron-proxy CA
+  install and before any reads/writes into `~/.claude/`.
+  ([#80](https://github.com/sherodtaylor/agent-smith/pull/80))
+
+### Deploy story
+
+Tagging the release pre-emptively (CHANGELOG entry landed
+post-tag); the tag was cut to unblock pmbot bootstrap. The
+`v0.2.8` tag's GitHub Release body does not include this section
+because the runbook's "CHANGELOG-before-tag" order was reversed —
+follow-up cleanup, no functional impact.
+
+---
+
 ## [0.2.7] - 2026-05-29
 
 Minor release. Chart-only change — adds pmbot (product manager agent)
