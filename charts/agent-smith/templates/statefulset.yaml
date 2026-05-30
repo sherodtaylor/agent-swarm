@@ -61,6 +61,11 @@ spec:
             - name: MATRIX_ALLOWED_USERS
               value: {{ $agent.matrix.allowedUsers | quote }}
             {{- end }}
+            {{- $autoJoinRooms := default (default list $root.Values.matrix.autoJoinRooms) $agent.matrix.autoJoinRooms }}
+            {{- if $autoJoinRooms }}
+            - name: MATRIX_AUTO_JOIN_ROOMS
+              value: {{ join "," $autoJoinRooms | quote }}
+            {{- end }}
             {{- with $root.Values.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
