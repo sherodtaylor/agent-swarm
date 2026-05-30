@@ -21,6 +21,17 @@ cut-a-release procedure.
 
 ---
 
+## [0.2.9] - 2026-05-30
+
+### Added
+
+- **`matrix.autoJoinRooms`** chart value (global or per-agent list of room
+  aliases/IDs). `setup.sh` now joins each listed room at pod start via
+  `POST /_matrix/client/v3/join/{alias}`. Idempotent; failures are logged and
+  do not block boot. Eliminates the manual `/invite` step for new bot accounts.
+
+---
+
 ## [0.2.8] - 2026-05-30
 
 Patch release. Image-only change — chart templates unchanged from 0.2.7.
