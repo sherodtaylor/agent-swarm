@@ -197,4 +197,15 @@ else
   echo "[setup] env-init: no setup.command configured, skipping"
 fi
 
+# Remove any ~/.tmux.conf installed by dotfiles. Dotfiles configurations are
+# written for interactive desktop use (TPM plugins, reattach-to-user-namespace,
+# etc.) and cause `tmux new-session -d` to exit non-zero with "no current
+# client" because those commands require an attached client. The entrypoint
+# uses tmux in pure detached-server mode, so we strip the config entirely and
+# let tmux run with built-in defaults.
+if [ -f "${HOME}/.tmux.conf" ] || [ -L "${HOME}/.tmux.conf" ]; then
+  rm -f "${HOME}/.tmux.conf"
+  echo "[setup] removed ~/.tmux.conf (incompatible with detached tmux server)"
+fi
+
 echo "[setup] complete"
