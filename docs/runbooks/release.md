@@ -3,6 +3,22 @@
 Use when you're shipping a new version of the image **and** chart. A
 maintenance branch / hotfix follows the same flow with a patch bump.
 
+## Workflow: PR → release (agent responsibility)
+
+When an agent opens or merges a PR to this repo, the release is part of the
+same task — not a follow-up. The expected flow after a PR merges to `main`:
+
+1. **Check CI** — `gh run list --repo sherodtaylor/agent-smith --limit 3` to
+   confirm the post-merge log job finished.
+2. **Cut the release** — run steps 1–3 below immediately; don't wait to be
+   asked. Use `GH_TOKEN=proxy-token-github SSL_CERT_FILE="${HOME}/iron-proxy.crt"` prefix for all reference scripts.
+3. **Wait for CI, then bump homelab** — steps 5–6 below. Flux reconciles
+   automatically; no manual cluster intervention needed.
+4. **Report in `#infra`** — post the new version and a verify command.
+
+This applies to every merged PR, including patches. If you merged the PR, you
+own the release cut.
+
 ## Reference scripts
 
 Scripts in [`.claude/references/`](../../.claude/references/README.md) cover
