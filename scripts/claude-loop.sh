@@ -19,6 +19,17 @@ echo "[claude-loop] starting (agent=${AGENT_NAME})"
 # claude-reauth.py tries headless Playwright first (SSO cookies), then falls
 # back to a ttyd browser tunnel + Matrix DM if cookies have expired.
 _ensure_auth() {
+  # `claude auth status` returns 0 for well-formed stub credentials — check
+  # the token value directly so new pods with only stubs trigger reauth.
+  local _token=""
+  if [ -f "$CREDS_DST" ]; then
+    _token=$(jq -r '.claudeAiOauth.accessToken // ""' "$CREDS_DST" 2>/dev/null || true)
+  fi
+  if [[ "$_token" == "access-token-stub" ]]; then
+    echo "[claude-loop] stub credentials detected — running claude-reauth"
+    claude-reauth
+    return
+  fi
   # `claude auth status` exits 0 if logged in, 1 if not
   if claude auth status >/dev/null 2>&1; then
     echo "[claude-loop] auth ok"
